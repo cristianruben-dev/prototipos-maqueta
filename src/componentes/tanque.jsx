@@ -10,7 +10,6 @@ export function Tanque({porcentaje, capacidad}){
                     className="absolute bottom-0 w-full bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                     style={{
                         height: `${porcentaje}%`,
-                        boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)'
                     }}
                 />
             </div>
