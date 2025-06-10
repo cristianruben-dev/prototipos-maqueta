@@ -23,15 +23,18 @@ sistema = {
         "secundario2": {"litros": 0, "capacidad": 1000}
     },
     "valvulas": {
-        "valvula1": {"presion": 45, "estado": False},
-        "valvula2": {"presion": 30, "estado": False},
-        "valvula3": {"presion": 25, "estado": False}
+        "valvula1": {"presion": 75, "estado": False},
+        "valvula2": {"presion": 78, "estado": False},
+        "valvula3": {"presion": 80, "estado": False}
     },
     "flujos": {
-        "principal": 0
+        "principal": 5.0
     },
     "timestamp": ""
 }
+
+# Valor previo para crear cambios más suaves
+flujo_previo = sistema["flujos"]["principal"]
 
 # Callback para cuando el cliente se conecta al broker
 def on_connect(client, userdata, flags, rc):
@@ -46,7 +49,7 @@ client.on_connect = on_connect
 
 # Función para simular cambios en los datos
 def simular_cambios():
-    global sistema
+    global sistema, flujo_previo
     
     # Actualizar timestamp
     sistema["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -56,21 +59,26 @@ def simular_cambios():
         if random.random() < 0.05:  # 5% de probabilidad de cambio
             sistema["valvulas"][valvula]["estado"] = not sistema["valvulas"][valvula]["estado"]
     
-    # Simular flujo principal (independiente de las válvulas en esta versión)
-    sistema["flujos"]["principal"] = round(random.uniform(0, 10), 1)
+    # Simular flujo principal con cambios suaves (poca variación)
+    # Usar el valor previo para crear transiciones más suaves
+    cambio_flujo = random.uniform(-0.2, 0.2)  # Cambio muy pequeño para mayor estabilidad
+    nuevo_flujo = flujo_previo + cambio_flujo
+    nuevo_flujo = max(4.8, min(5.2, nuevo_flujo))  # Mantener entre 4.8 y 5.2 L/s
+    sistema["flujos"]["principal"] = round(nuevo_flujo, 1)
+    flujo_previo = sistema["flujos"]["principal"]
     
-    # Actualizar presiones con variación aleatoria
+    # Actualizar presiones con variación aleatoria (siempre por encima de 70)
     for valvula in sistema["valvulas"]:
-        # Si la válvula está abierta, aumentar la presión un poco
+        # Si la válvula está abierta, variar la presión un poco
         if sistema["valvulas"][valvula]["estado"]:
             base_presion = sistema["valvulas"][valvula]["presion"]
-            # Más variación si está abierta
-            nueva_presion = base_presion + random.uniform(-5, 8)
+            # Variación menor cuando está abierta
+            nueva_presion = base_presion + random.uniform(-1, 1.5)
         else:
             base_presion = sistema["valvulas"][valvula]["presion"]
-            nueva_presion = base_presion + random.uniform(-2, 2)
+            nueva_presion = base_presion + random.uniform(-0.5, 0.8)
             
-        nueva_presion = max(10, min(90, nueva_presion))  # Limitar rango
+        nueva_presion = max(72, min(88, nueva_presion))  # Mantener entre 72 y 88 kPa
         sistema["valvulas"][valvula]["presion"] = round(nueva_presion, 1)
     
     # Actualizar volúmenes de tanques basados en el flujo principal

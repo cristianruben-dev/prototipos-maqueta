@@ -1,53 +1,87 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 export function useDataHistory(maxMinutes = 15) {
   const [historia, setHistoria] = useState({
-    principal: [],
-    tanque1: [],
-    tanque2: []
+    valvula1: [],
+    valvula2: [],
+    valvula3: [],
+    flujo: []
   });
 
   // Cargar datos del localStorage al inicializar
   useEffect(() => {
-    try {
-      const datosGuardados = localStorage.getItem('tanques_historial');
-      if (datosGuardados) {
-        const datos = JSON.parse(datosGuardados);
-        setHistoria(datos);
-      }
-    } catch (error) {
-      console.error('Error cargando historial:', error);
+    const datosGuardados = localStorage.getItem('valvulas_historial');
+    if (datosGuardados) {
+      const datos = JSON.parse(datosGuardados);
+      setHistoria(datos);
     }
   }, []);
 
   // Guardar en localStorage cuando cambie la historia
   useEffect(() => {
-    localStorage.setItem('tanques_historial', JSON.stringify(historia));
+    localStorage.setItem('valvulas_historial', JSON.stringify(historia));
   }, [historia]);
 
   // Función para agregar nuevos datos
-  const agregarDatos = useCallback((principal, tanque1, tanque2) => {
+  function agregarDatos(valvulas, flujo) {
     const timestamp = Date.now();
+    const maxPuntos = 30; // Máximo 30 puntos para mantener los gráficos limpios
+    const maxTiempo = maxMinutes * 60 * 1000;
+    const tiempoLimite = timestamp - maxTiempo;
 
     setHistoria(prev => {
-      const maxPuntos = 50; // Máximo 50 puntos
-      const maxTiempo = maxMinutes * 60 * 1000;
-      const tiempoLimite = timestamp - maxTiempo;
-
+      // Crear nuevo objeto con los datos actualizados
       const nuevo = {
-        principal: [...prev.principal, { time: timestamp, value: principal.presion }].slice(-maxPuntos),
-        tanque1: [...prev.tanque1, { time: timestamp, value: tanque1.presion }].slice(-maxPuntos),
-        tanque2: [...prev.tanque2, { time: timestamp, value: tanque2.presion }].slice(-maxPuntos)
+        valvula1: [
+          ...prev.valvula1, 
+          { time: timestamp, value: valvulas[0]?.presion || 0 }
+        ].slice(-maxPuntos),
+        valvula2: [
+          ...prev.valvula2, 
+          { time: timestamp, value: valvulas[1]?.presion || 0 }
+        ].slice(-maxPuntos),
+        valvula3: [
+          ...prev.valvula3, 
+          { time: timestamp, value: valvulas[2]?.presion || 0 }
+        ].slice(-maxPuntos),
+        flujo: [
+          ...prev.flujo,
+          { time: timestamp, value: flujo || 0 }
+        ].slice(-maxPuntos)
       };
 
       // Filtrar datos viejos
-      nuevo.principal = nuevo.principal.filter(item => item.time > tiempoLimite);
-      nuevo.tanque1 = nuevo.tanque1.filter(item => item.time > tiempoLimite);
-      nuevo.tanque2 = nuevo.tanque2.filter(item => item.time > tiempoLimite);
+      nuevo.valvula1 = nuevo.valvula1.filter(item => item.time > tiempoLimite);
+      nuevo.valvula2 = nuevo.valvula2.filter(item => item.time > tiempoLimite);
+      nuevo.valvula3 = nuevo.valvula3.filter(item => item.time > tiempoLimite);
+      nuevo.flujo = nuevo.flujo.filter(item => item.time > tiempoLimite);
 
       return nuevo;
     });
-  }, [maxMinutes]);
+  }
 
-  return { historia, agregarDatos };
+  // Formatear datos para los gráficos de Recharts
+  function getDatosGrafico() {
+    // Convertir el formato de datos para ser compatible con Recharts
+    return {
+      valvula1: historia.valvula1.map(item => ({
+        time: new Date(item.time).toLocaleTimeString(),
+        presion: item.value
+      })),
+      valvula2: historia.valvula2.map(item => ({
+        time: new Date(item.time).toLocaleTimeString(),
+        presion: item.value
+      })),
+      valvula3: historia.valvula3.map(item => ({
+        time: new Date(item.time).toLocaleTimeString(),
+        presion: item.value
+      })),
+      flujo: historia.flujo.map(item => ({
+        time: new Date(item.time).toLocaleTimeString(),
+        flujo: item.value
+      }))
+    };
+  }
+
+  return { historia, agregarDatos, getDatosGrafico };
 }
