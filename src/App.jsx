@@ -2,6 +2,7 @@ import { Tanque } from "./componentes/tanque";
 import { Valvula } from "./componentes/valvula";
 import { Tuberia } from "./componentes/tuberia";
 import { GraficaLinea } from "./componentes/GraficaLinea";
+import { DownloadButton } from "./componentes/DownloadButton";
 import { useState, useEffect } from "react";
 import { useMQTT } from "./hook/useMQTT";
 import { useDataHistory } from "./hook/useDataHistory";
@@ -88,9 +89,12 @@ export default function App() {
       <main className="flex-grow mx-auto max-w-5xl w-full px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-medium text-gray-800">Sistema de Monitoreo</h2>
-          <div className="flex items-center">
-            <div className={`h-2 w-2 rounded-full mr-2 ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-sm text-gray-600">{connected ? 'Conectado' : 'Desconectado'}</span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <div className={`h-2 w-2 rounded-full mr-2 ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm text-gray-600">{connected ? 'Conectado' : 'Desconectado'}</span>
+            </div>
+            <DownloadButton historia={historia} filename="historial_sistema.json" />
           </div>
         </div>
         
