@@ -95,17 +95,19 @@
   animation: dash 1s linear infinite;
 }
 
-/* Estilos adicionales para los edges existentes */
+/* Estilos para líneas estáticas azules punteadas */
 .react-flow__edge-path {
   stroke: #3b82f6;
-  stroke-width: 3;
-  stroke-dasharray: 6, 3;
+  stroke-width: 4;
+  stroke-dasharray: 8, 4;
   animation: dash 1.5s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.3));
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
   stroke: #1d4ed8;
-  stroke-width: 4;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px rgba(29, 78, 216, 0.5));
 }
 
 /* Mejorar la apariencia de los handles */

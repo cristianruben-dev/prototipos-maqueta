@@ -2,7 +2,7 @@ import { Handle, Position } from '@xyflow/react';
 import { Tanque } from '../components/tanque';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function TanqueNode({ data, isConnectable }) {
+export function TanqueNode({ data }) {
   return (
     <Card className="min-w-[200px] relative">
       <CardHeader>
@@ -19,14 +19,12 @@ export function TanqueNode({ data, isConnectable }) {
         type="target"
         position={Position.Left}
         id="entrada"
-        isConnectable={isConnectable}
       />
 
       <Handle
         type="source"
         position={Position.Right}
         id="salida"
-        isConnectable={isConnectable}
       />
     </Card>
   );

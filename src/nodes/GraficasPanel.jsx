@@ -66,7 +66,7 @@ export function GraficasPanel({ datosGrafico, historia, connected }) {
         {!isMinimized && (
           <CardContent>
             {/* Gráficas de presión */}
-            <div className="mb-4">
+            <div>
               <h3 className="text-sm font-medium mb-3">Historial de Presión</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {graficasConfig.map(({ key, titulo, color }) => (
@@ -82,23 +82,6 @@ export function GraficasPanel({ datosGrafico, historia, connected }) {
                     etiqueta="Presión"
                   />
                 ))}
-              </div>
-            </div>
-
-            {/* Gráfica de flujo */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">Historial de Flujo</h3>
-              <div className="h-[200px]">
-                <GraficaLinea
-                  datos={datosGrafico?.flujo || []}
-                  titulo="Flujo Principal"
-                  color="#3b82f6"
-                  dataKey="flujo"
-                  unidad="L/s"
-                  domainMin={0}
-                  domainMax={10}
-                  etiqueta="Flujo"
-                />
               </div>
             </div>
           </CardContent>

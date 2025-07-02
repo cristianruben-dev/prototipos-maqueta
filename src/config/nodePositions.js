@@ -7,8 +7,6 @@ export const initialNodes = [
     id: 'tanque-principal',
     type: 'tanque',
     position: { x: 50, y: 270 },
-    draggable: false,
-    selectable: false,
     data: {
       label: 'Tanque Principal',
       litrosKey: 'principal',
@@ -20,8 +18,6 @@ export const initialNodes = [
     id: 'valvula-1',
     type: 'valvula',
     position: { x: 350, y: 350 },
-    draggable: false,
-    selectable: false,
     data: {
       id: 1,
       presionKey: 'valvula1_presion',
@@ -34,8 +30,6 @@ export const initialNodes = [
     id: 'valvula-2',
     type: 'valvula',
     position: { x: 650, y: 250 },
-    draggable: false,
-    selectable: false,
     data: {
       id: 2,
       presionKey: 'valvula2_presion',
@@ -48,8 +42,6 @@ export const initialNodes = [
     id: 'valvula-3',
     type: 'valvula',
     position: { x: 650, y: 450 },
-    draggable: false,
-    selectable: false,
     data: {
       id: 3,
       presionKey: 'valvula3_presion',
@@ -62,8 +54,6 @@ export const initialNodes = [
     id: 'tanque-secundario-1',
     type: 'tanque',
     position: { x: 950, y: 150 },
-    draggable: false,
-    selectable: false,
     data: {
       label: 'Tanque Secundario 1',
       litrosKey: 'secundario1',
@@ -75,8 +65,6 @@ export const initialNodes = [
     id: 'tanque-secundario-2',
     type: 'tanque',
     position: { x: 950, y: 550 },
-    draggable: false,
-    selectable: false,
     data: {
       label: 'Tanque Secundario 2',
       litrosKey: 'secundario2',

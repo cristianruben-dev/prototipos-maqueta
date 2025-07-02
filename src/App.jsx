@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -27,48 +27,85 @@ export default function App() {
   const [edges] = useEdgesState(initialEdges);
 
   const { historia, agregarDatos, getDatosGrafico } = useDataHistory(10);
-  const { data, connected } = useMQTT("ws://localhost:9001", "tanques/datos");
+  const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
 
-  const handleValvulaToggle = useCallback((id, estado) => {
+  // Función simple sin useCallback para evitar problemas
+  const handleValvulaToggle = (id, estado) => {
     console.log(`Válvula ${id} ${estado ? 'abierta' : 'cerrada'}`);
-  }, []);
 
-  // Actualizar cuando lleguen datos
+    const comando = {
+      tipo: 'valvula',
+      id: id,
+      estado: estado
+    };
+    if (sendCommand) {
+      sendCommand('tanques/comandos', comando);
+    }
+  };
+
+  // Actualizar cuando lleguen datos - MUY SIMPLIFICADO
   useEffect(() => {
     if (!data || !connected) return;
 
     try {
       const datos = JSON.parse(data);
 
-      // Actualizar historial
+      // Solo actualizar historial, NO los nodos por ahora
       const valvulas = [1, 2, 3].map(id => ({
         id,
         presion: datos[`valvula${id}_presion`] || 0,
         estado: datos[`valvula${id}_estado`] || false
       }));
-      agregarDatos(valvulas, datos.flujo || 0);
+      agregarDatos(valvulas);
 
-      // Actualizar nodos súper simple
-      setNodes((nds) =>
-        nds.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            // Mapeo directo para tanques
-            ...(node.data.litrosKey && { litros: datos[node.data.litrosKey] || 0 }),
-            // Mapeo directo para válvulas
-            ...(node.data.presionKey && {
-              presion: datos[node.data.presionKey] || 0,
-              estado: datos[node.data.estadoKey] || false,
-              onToggle: handleValvulaToggle
-            }),
-          }
-        }))
-      );
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, agregarDatos, handleValvulaToggle, setNodes]);
+  }, [data, connected, agregarDatos]);
+
+  // Rehabilitamos la actualización de nodos de forma segura
+  useEffect(() => {
+    if (!data || !connected) return;
+
+    try {
+      const datos = JSON.parse(data);
+
+      // Actualizar nodos de forma controlada
+      setNodes((prevNodes) => {
+        return prevNodes.map((node) => {
+          // Crear copia del nodo
+          const updatedNode = { ...node };
+
+          // Solo actualizar si hay cambios reales
+          if (node.data.litrosKey && datos[node.data.litrosKey] !== node.data.litros) {
+            updatedNode.data = {
+              ...node.data,
+              litros: datos[node.data.litrosKey] || 0
+            };
+          }
+
+          if (node.data.presionKey) {
+            const nuevaPresion = datos[node.data.presionKey] || 0;
+            const nuevoEstado = datos[node.data.estadoKey] || false;
+
+            // Solo actualizar si hay cambios
+            if (nuevaPresion !== node.data.presion || nuevoEstado !== node.data.estado) {
+              updatedNode.data = {
+                ...node.data,
+                presion: nuevaPresion,
+                estado: nuevoEstado,
+                onToggle: handleValvulaToggle
+              };
+            }
+          }
+
+          return updatedNode;
+        });
+      });
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  }, [data, connected]);
 
   return (
     <div className="w-full h-screen">
@@ -77,9 +114,6 @@ export default function App() {
         edges={edges}
         nodeTypes={nodeTypes}
         connectionLineComponent={ConnectionLine}
-        nodesDraggable={false}
-        nodesConnectable={true}
-        elementsSelectable={true}
       >
         <Background color="#d8d8d8" gap={20} size={2} />
         <Controls className="bg-card border border-border" />

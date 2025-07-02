@@ -9,7 +9,7 @@ export function DownloadButton({ historia, filename = "historial.json" }) {
     serie?.map(item => ({
       timestamp: new Date(item.time).toISOString(),
       [tipo]: item.value,
-      unidad: tipo === 'presion' ? "kPa" : "L/s"
+      unidad: "kPa"
     })) || [];
 
   const formatearDatos = () => {
@@ -22,8 +22,7 @@ export function DownloadButton({ historia, filename = "historial.json" }) {
       datos: {
         valvula1: formatearSerie(historia.valvula1, 'presion'),
         valvula2: formatearSerie(historia.valvula2, 'presion'),
-        valvula3: formatearSerie(historia.valvula3, 'presion'),
-        flujo: formatearSerie(historia.flujo, 'flujo')
+        valvula3: formatearSerie(historia.valvula3, 'presion')
       },
       estadisticas: {
         totalRegistros: Object.values(historia).reduce((total, serie) => total + (serie?.length || 0), 0),

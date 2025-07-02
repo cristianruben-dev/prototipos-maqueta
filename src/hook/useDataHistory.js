@@ -4,8 +4,7 @@ export function useDataHistory(maxMinutes = 15) {
   const [historia, setHistoria] = useState({
     valvula1: [],
     valvula2: [],
-    valvula3: [],
-    flujo: []
+    valvula3: []
   });
 
   // Cargar y guardar datos del localStorage
@@ -33,12 +32,11 @@ export function useDataHistory(maxMinutes = 15) {
   };
 
   // Función para agregar nuevos datos
-  function agregarDatos(valvulas, flujo) {
+  function agregarDatos(valvulas) {
     setHistoria(prev => ({
       valvula1: actualizarSerie(prev.valvula1, valvulas[0]?.presion || 0),
       valvula2: actualizarSerie(prev.valvula2, valvulas[1]?.presion || 0),
-      valvula3: actualizarSerie(prev.valvula3, valvulas[2]?.presion || 0),
-      flujo: actualizarSerie(prev.flujo, flujo || 0)
+      valvula3: actualizarSerie(prev.valvula3, valvulas[2]?.presion || 0)
     }));
   }
 
@@ -54,8 +52,7 @@ export function useDataHistory(maxMinutes = 15) {
     return {
       valvula1: formatearDatos(historia.valvula1, 'presion'),
       valvula2: formatearDatos(historia.valvula2, 'presion'),
-      valvula3: formatearDatos(historia.valvula3, 'presion'),
-      flujo: formatearDatos(historia.flujo, 'flujo')
+      valvula3: formatearDatos(historia.valvula3, 'presion')
     };
   }
 

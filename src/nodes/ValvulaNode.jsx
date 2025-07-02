@@ -1,7 +1,7 @@
 import { Handle, Position } from '@xyflow/react';
 import { Valvula } from '../components/valvula';
 
-export function ValvulaNode({ data, isConnectable }) {
+export function ValvulaNode({ data }) {
   const handleValvulaToggle = (id, estado) => {
     if (data.onToggle) {
       data.onToggle(id, estado);
@@ -15,7 +15,6 @@ export function ValvulaNode({ data, isConnectable }) {
         type="target"
         position={Position.Left}
         id="entrada"
-        isConnectable={isConnectable}
       />
 
       {/* Componente Valvula */}
@@ -31,7 +30,6 @@ export function ValvulaNode({ data, isConnectable }) {
         type="source"
         position={Position.Right}
         id="salida"
-        isConnectable={isConnectable}
       />
     </div>
   );
