@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,18 +22,15 @@ export function Valvula({ id, presion, estado, onToggle }) {
   };
 
   return (
-    <Card className="w-full max-w-[180px]">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Válvula {id}</span>
-          <Badge variant={isOpen ? "default" : "secondary"}>
-            {isOpen ? "Abierta" : "Cerrada"}
-          </Badge>
-        </div>
-      </CardHeader>
+    <Card className="w-[230px] relative">
+      <Badge variant={isOpen ? "default" : "secondary"} className="absolute top-2 right-2">
+        {isOpen ? "Abierta" : "Cerrada"}
+      </Badge>
 
-      <CardContent className="pt-0">
+      <CardContent>
         <div className="space-y-3">
+          <span className="text-sm font-medium">Válvula {id}</span>
+
           {/* Indicador de presión */}
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">Presión:</span>

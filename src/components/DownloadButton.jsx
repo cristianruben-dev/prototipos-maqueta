@@ -5,48 +5,38 @@ import { Download, Loader2 } from "lucide-react";
 export function DownloadButton({ historia, filename = "historial.json" }) {
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const formatearSerie = (serie, tipo) =>
+    serie?.map(item => ({
+      timestamp: new Date(item.time).toISOString(),
+      [tipo]: item.value,
+      unidad: tipo === 'presion' ? "kPa" : "L/s"
+    })) || [];
+
   const formatearDatos = () => {
-    const datosFormateados = {
+    const primeraValvula = historia.valvula1;
+
+    return JSON.stringify({
       fechaGeneracion: new Date().toISOString(),
       version: "1.0",
       sistema: "Monitoreo de Tanques",
       datos: {
-        valvula1: historia.valvula1?.map(item => ({
-          timestamp: new Date(item.time).toISOString(),
-          presion: item.value,
-          unidad: "kPa"
-        })) || [],
-        valvula2: historia.valvula2?.map(item => ({
-          timestamp: new Date(item.time).toISOString(),
-          presion: item.value,
-          unidad: "kPa"
-        })) || [],
-        valvula3: historia.valvula3?.map(item => ({
-          timestamp: new Date(item.time).toISOString(),
-          presion: item.value,
-          unidad: "kPa"
-        })) || [],
-        flujo: historia.flujo?.map(item => ({
-          timestamp: new Date(item.time).toISOString(),
-          flujo: item.value,
-          unidad: "L/s"
-        })) || []
+        valvula1: formatearSerie(historia.valvula1, 'presion'),
+        valvula2: formatearSerie(historia.valvula2, 'presion'),
+        valvula3: formatearSerie(historia.valvula3, 'presion'),
+        flujo: formatearSerie(historia.flujo, 'flujo')
       },
       estadisticas: {
-        totalRegistros: (historia.valvula1?.length || 0) + (historia.valvula2?.length || 0) + (historia.valvula3?.length || 0) + (historia.flujo?.length || 0),
-        periodoInicio: historia.valvula1?.[0] ? new Date(historia.valvula1[0].time).toISOString() : null,
-        periodoFin: historia.valvula1?.[historia.valvula1.length - 1] ? new Date(historia.valvula1[historia.valvula1.length - 1].time).toISOString() : null
+        totalRegistros: Object.values(historia).reduce((total, serie) => total + (serie?.length || 0), 0),
+        periodoInicio: primeraValvula?.[0] ? new Date(primeraValvula[0].time).toISOString() : null,
+        periodoFin: primeraValvula?.[primeraValvula.length - 1] ? new Date(primeraValvula[primeraValvula.length - 1].time).toISOString() : null
       }
-    };
-
-    return JSON.stringify(datosFormateados, null, 2);
+    }, null, 2);
   };
 
   const handleDownload = async () => {
     setIsDownloading(true);
 
     try {
-      // Simular un pequeño delay para mostrar el loading
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const datosJSON = formatearDatos();

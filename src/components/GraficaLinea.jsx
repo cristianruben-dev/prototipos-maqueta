@@ -29,10 +29,10 @@ export function GraficaLinea({
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-xs font-medium">{titulo}</CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent>
         <div className="h-[150px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart

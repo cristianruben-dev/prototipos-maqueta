@@ -8,78 +8,54 @@ export function useDataHistory(maxMinutes = 15) {
     flujo: []
   });
 
-  // Cargar datos del localStorage al inicializar
+  // Cargar y guardar datos del localStorage
   useEffect(() => {
     const datosGuardados = localStorage.getItem('valvulas_historial');
     if (datosGuardados) {
-      const datos = JSON.parse(datosGuardados);
-      setHistoria(datos);
+      setHistoria(JSON.parse(datosGuardados));
     }
   }, []);
 
-  // Guardar en localStorage cuando cambie la historia
   useEffect(() => {
     localStorage.setItem('valvulas_historial', JSON.stringify(historia));
   }, [historia]);
 
-  // Función para agregar nuevos datos
-  function agregarDatos(valvulas, flujo) {
-    const timestamp = Date.now();
-    const maxPuntos = 30; // Máximo 30 puntos para mantener los gráficos limpios
+  // Helper para actualizar una serie de datos
+  const actualizarSerie = (seriePrev, nuevoValor) => {
+    const maxPuntos = 30;
     const maxTiempo = maxMinutes * 60 * 1000;
+    const timestamp = Date.now();
     const tiempoLimite = timestamp - maxTiempo;
 
-    setHistoria(prev => {
-      // Crear nuevo objeto con los datos actualizados
-      const nuevo = {
-        valvula1: [
-          ...prev.valvula1, 
-          { time: timestamp, value: valvulas[0]?.presion || 0 }
-        ].slice(-maxPuntos),
-        valvula2: [
-          ...prev.valvula2, 
-          { time: timestamp, value: valvulas[1]?.presion || 0 }
-        ].slice(-maxPuntos),
-        valvula3: [
-          ...prev.valvula3, 
-          { time: timestamp, value: valvulas[2]?.presion || 0 }
-        ].slice(-maxPuntos),
-        flujo: [
-          ...prev.flujo,
-          { time: timestamp, value: flujo || 0 }
-        ].slice(-maxPuntos)
-      };
+    return [...seriePrev, { time: timestamp, value: nuevoValor }]
+      .slice(-maxPuntos)
+      .filter(item => item.time > tiempoLimite);
+  };
 
-      // Filtrar datos viejos
-      nuevo.valvula1 = nuevo.valvula1.filter(item => item.time > tiempoLimite);
-      nuevo.valvula2 = nuevo.valvula2.filter(item => item.time > tiempoLimite);
-      nuevo.valvula3 = nuevo.valvula3.filter(item => item.time > tiempoLimite);
-      nuevo.flujo = nuevo.flujo.filter(item => item.time > tiempoLimite);
-
-      return nuevo;
-    });
+  // Función para agregar nuevos datos
+  function agregarDatos(valvulas, flujo) {
+    setHistoria(prev => ({
+      valvula1: actualizarSerie(prev.valvula1, valvulas[0]?.presion || 0),
+      valvula2: actualizarSerie(prev.valvula2, valvulas[1]?.presion || 0),
+      valvula3: actualizarSerie(prev.valvula3, valvulas[2]?.presion || 0),
+      flujo: actualizarSerie(prev.flujo, flujo || 0)
+    }));
   }
 
-  // Formatear datos para los gráficos de Recharts
+  // Helper para formatear datos de tiempo
+  const formatearDatos = (datos, dataKey) =>
+    datos.map(item => ({
+      time: new Date(item.time).toLocaleTimeString(),
+      [dataKey]: item.value
+    }));
+
+  // Formatear datos para los gráficos
   function getDatosGrafico() {
-    // Convertir el formato de datos para ser compatible con Recharts
     return {
-      valvula1: historia.valvula1.map(item => ({
-        time: new Date(item.time).toLocaleTimeString(),
-        presion: item.value
-      })),
-      valvula2: historia.valvula2.map(item => ({
-        time: new Date(item.time).toLocaleTimeString(),
-        presion: item.value
-      })),
-      valvula3: historia.valvula3.map(item => ({
-        time: new Date(item.time).toLocaleTimeString(),
-        presion: item.value
-      })),
-      flujo: historia.flujo.map(item => ({
-        time: new Date(item.time).toLocaleTimeString(),
-        flujo: item.value
-      }))
+      valvula1: formatearDatos(historia.valvula1, 'presion'),
+      valvula2: formatearDatos(historia.valvula2, 'presion'),
+      valvula3: formatearDatos(historia.valvula3, 'presion'),
+      flujo: formatearDatos(historia.flujo, 'flujo')
     };
   }
 
