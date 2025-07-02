@@ -15,6 +15,7 @@ import { TanqueNode } from './nodes/TanqueNode';
 import { ValvulaNode } from './nodes/ValvulaNode';
 import { GraficasPanel } from './nodes/GraficasPanel';
 import { initialNodes, initialEdges } from './config/nodePositions';
+import ConnectionLine from './components/ConnectionLine';
 
 const nodeTypes = {
   tanque: TanqueNode,
@@ -75,9 +76,10 @@ export default function App() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        connectionLineComponent={ConnectionLine}
         nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
+        nodesConnectable={true}
+        elementsSelectable={true}
       >
         <Background color="#d8d8d8" gap={20} size={2} />
         <Controls className="bg-card border border-border" />

@@ -6,7 +6,7 @@ export const initialNodes = [
   {
     id: 'tanque-principal',
     type: 'tanque',
-    position: { x: 50, y: 300 },
+    position: { x: 50, y: 270 },
     draggable: false,
     selectable: false,
     data: {
@@ -19,7 +19,7 @@ export const initialNodes = [
   {
     id: 'valvula-1',
     type: 'valvula',
-    position: { x: 450, y: 200 },
+    position: { x: 350, y: 350 },
     draggable: false,
     selectable: false,
     data: {
@@ -33,7 +33,7 @@ export const initialNodes = [
   {
     id: 'valvula-2',
     type: 'valvula',
-    position: { x: 450, y: 400 },
+    position: { x: 650, y: 250 },
     draggable: false,
     selectable: false,
     data: {
@@ -47,7 +47,7 @@ export const initialNodes = [
   {
     id: 'valvula-3',
     type: 'valvula',
-    position: { x: 450, y: 600 },
+    position: { x: 650, y: 450 },
     draggable: false,
     selectable: false,
     data: {
@@ -61,7 +61,7 @@ export const initialNodes = [
   {
     id: 'tanque-secundario-1',
     type: 'tanque',
-    position: { x: 800, y: 100 },
+    position: { x: 950, y: 150 },
     draggable: false,
     selectable: false,
     data: {
@@ -74,7 +74,7 @@ export const initialNodes = [
   {
     id: 'tanque-secundario-2',
     type: 'tanque',
-    position: { x: 800, y: 520 },
+    position: { x: 950, y: 550 },
     draggable: false,
     selectable: false,
     data: {
@@ -86,7 +86,7 @@ export const initialNodes = [
   },
 ];
 
-// Configuración inicial de conexiones
+// Configuración inicial de conexiones - Nueva topología en cascada
 export const initialEdges = [
   {
     id: 'e1',
@@ -97,21 +97,21 @@ export const initialEdges = [
   },
   {
     id: 'e2',
-    source: 'tanque-principal',
+    source: 'valvula-1',
     target: 'valvula-2',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
   },
   {
     id: 'e3',
-    source: 'tanque-principal',
+    source: 'valvula-1',
     target: 'valvula-3',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
   },
   {
     id: 'e4',
-    source: 'valvula-1',
+    source: 'valvula-2',
     target: 'tanque-secundario-1',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
