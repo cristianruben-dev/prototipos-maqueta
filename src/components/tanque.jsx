@@ -25,7 +25,7 @@ export function Tanque({ litros, capacidad = 1000 }) {
       <div className="relative w-[120px] h-[180px] border-2 border-border rounded-md overflow-hidden bg-card">
         {/* Líquido del tanque */}
         <div
-          className="absolute bottom-0 w-full bg-primary transition-all duration-300"
+          className="absolute bottom-0 w-full bg-blue-500 transition-all duration-300"
           style={{
             height: `${porcentaje}%`,
             opacity: 0.6

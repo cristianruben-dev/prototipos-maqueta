@@ -33,7 +33,7 @@ export function GraficaLinea({
         <CardTitle className="text-xs font-medium">{titulo}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[150px]">
+        <div className="h-[120px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={datos}

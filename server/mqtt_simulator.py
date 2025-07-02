@@ -42,8 +42,17 @@ class Tanque:
 
     def actualizar_nivel(self, dt: float = 2.0):
         """Actualiza el nivel del tanque basado en flujos"""
-        flujo_neto = self.flujo_entrada - self.flujo_salida
+        # Calcular espacio disponible
+        espacio_disponible = self.capacidad - self.nivel_actual
+
+        # Limitar flujo de entrada según espacio disponible
+        flujo_entrada_real = min(self.flujo_entrada, espacio_disponible / dt)
+
+        # Calcular cambio neto
+        flujo_neto = flujo_entrada_real - self.flujo_salida
         cambio = flujo_neto * dt
+
+        # Actualizar nivel con límites estrictos
         self.nivel_actual = max(0.0, min(self.capacidad, self.nivel_actual + cambio))
 
     def get_porcentaje(self) -> float:
@@ -68,15 +77,29 @@ class SistemaSimulacion:
 
     def calcular_flujos(self):
         """Calcula los flujos del sistema basado en topología y estados de válvulas"""
-        # Solo hay flujo si las válvulas permiten que el líquido llegue a destinos
+        # Verificar si hay espacio en tanques de destino
+        espacio_s1 = (
+            self.tanques["secundario1"].capacidad
+            - self.tanques["secundario1"].nivel_actual
+        )
+        espacio_s2 = (
+            self.tanques["secundario2"].capacidad
+            - self.tanques["secundario2"].nivel_actual
+        )
+
+        # Solo hay flujo si las válvulas están abiertas Y hay espacio en el tanque destino
         flujo_v2 = (
             self.flujo_base
-            if (self.valvulas[1].estado and self.valvulas[2].estado)
+            if (
+                self.valvulas[1].estado and self.valvulas[2].estado and espacio_s1 > 1.0
+            )
             else 0.0
         )
         flujo_v3 = (
             self.flujo_base
-            if (self.valvulas[1].estado and self.valvulas[3].estado)
+            if (
+                self.valvulas[1].estado and self.valvulas[3].estado and espacio_s2 > 1.0
+            )
             else 0.0
         )
 
@@ -208,11 +231,26 @@ def main():
             mqtt_manager.publicar_datos(datos)
 
             # Log de estado
+            principal_pct = (datos["principal"] / 2000.0) * 100
+            s1_pct = (datos["secundario1"] / 1000.0) * 100
+            s2_pct = (datos["secundario2"] / 1000.0) * 100
+
+            # Indicadores de estado
+            v1_estado = "🟢" if sistema.valvulas[1].estado else "🔴"
+            v2_estado = "🟢" if sistema.valvulas[2].estado else "🔴"
+            v3_estado = "🟢" if sistema.valvulas[3].estado else "🔴"
+
+            s1_estado = "🚫LLENO" if s1_pct >= 99 else f"{s1_pct:.0f}%"
+            s2_estado = "🚫LLENO" if s2_pct >= 99 else f"{s2_pct:.0f}%"
+
             print(
-                f"📊 Principal: {datos['principal']:.0f}L | S1: {datos['secundario1']:.0f}L | S2: {datos['secundario2']:.0f}L"
+                f"📊 Principal: {datos['principal']:.0f}L ({principal_pct:.0f}%) | "
+                f"S1: {datos['secundario1']:.0f}L ({s1_estado}) | "
+                f"S2: {datos['secundario2']:.0f}L ({s2_estado})"
             )
             print(
-                f"🚿 Flujos - V1: {'✅' if sistema.valvulas[1].estado else '❌'} | V2: {'✅' if sistema.valvulas[2].estado else '❌'} | V3: {'✅' if sistema.valvulas[3].estado else '❌'}"
+                f"🚿 Válvulas - V1: {v1_estado} | V2: {v2_estado} | V3: {v3_estado} | "
+                f"Flujo total: {datos.get('flujo_total', 0):.1f}L/s"
             )
 
             time.sleep(2)

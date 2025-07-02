@@ -4,7 +4,6 @@ import {
   useNodesState,
   useEdgesState,
   Controls,
-  MiniMap,
   Background,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -31,8 +30,6 @@ export default function App() {
 
   // Función simple sin useCallback para evitar problemas
   const handleValvulaToggle = (id, estado) => {
-    console.log(`Válvula ${id} ${estado ? 'abierta' : 'cerrada'}`);
-
     const comando = {
       tipo: 'valvula',
       id: id,
@@ -50,7 +47,6 @@ export default function App() {
     try {
       const datos = JSON.parse(data);
 
-      // Solo actualizar historial, NO los nodos por ahora
       const valvulas = [1, 2, 3].map(id => ({
         id,
         presion: datos[`valvula${id}_presion`] || 0,
@@ -115,9 +111,13 @@ export default function App() {
         nodeTypes={nodeTypes}
         connectionLineComponent={ConnectionLine}
       >
-        <Background color="#d8d8d8" gap={20} size={2} />
+        <Background
+          color="#f1f1f1"
+          gap={20}
+          size={2}
+          variant="lines"
+        />
         <Controls className="bg-card border border-border" />
-        <MiniMap className="bg-card border border-border" />
 
         <GraficasPanel
           datosGrafico={getDatosGrafico()}

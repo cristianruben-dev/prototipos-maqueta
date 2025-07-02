@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function Valvula({ id, presion, estado, onToggle }) {
   const [isOpen, setIsOpen] = useState(estado || false);
+
+  // Sincronizar con el estado del MQTT
+  useEffect(() => {
+    setIsOpen(estado);
+  }, [estado]);
 
   const handleToggle = () => {
     const newState = !isOpen;
@@ -21,13 +26,23 @@ export function Valvula({ id, presion, estado, onToggle }) {
     return "destructive";
   };
 
+  // Determinar si hay flujo basado en presión y estado
+  const hayFlujo = isOpen && presion > 50;
+
   return (
-    <Card className="w-[230px] relative">
-      <Badge variant={isOpen ? "default" : "secondary"} className="absolute top-2 right-2">
+    <Card className="w-[230px] relative overflow-hidden">
+      {/* Efecto de agua fluyendo */}
+      {hayFlujo && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="agua-flujo"></div>
+        </div>
+      )}
+
+      <Badge variant={isOpen ? "default" : "secondary"} className="absolute top-2 right-2 z-10">
         {isOpen ? "Abierta" : "Cerrada"}
       </Badge>
 
-      <CardContent>
+      <CardContent className="relative z-10">
         <div className="space-y-3">
           <span className="text-sm font-medium">Válvula {id}</span>
 

@@ -1,7 +1,3 @@
-// Configuración de posiciones y conexiones del sistema de tanques
-
-// Configuración súper simple
-
 export const initialNodes = [
   {
     id: 'tanque-principal',
