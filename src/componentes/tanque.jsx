@@ -1,30 +1,49 @@
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+
 export function Tanque({ litros, capacidad = 1000 }) {
     // Calcular el porcentaje para el llenado visual
     const porcentaje = Math.min(100, (litros / capacidad) * 100);
-    
+
+    // Determinar el color del badge según el nivel
+    const getBadgeVariant = () => {
+        if (porcentaje < 20) return "destructive";
+        if (porcentaje < 50) return "default";
+        return "secondary";
+    };
+
     return (
-        <div className="flex flex-col items-center">
-            <div className="flex items-center mb-1">
-                <span className="text-lg font-medium text-blue-600">{litros.toFixed(0)}</span>
-                <span className="ml-1 text-xs text-gray-500">/ {capacidad}L</span>
+        <div className="flex flex-col items-center space-y-3">
+            {/* Información del tanque */}
+            <div className="flex items-center space-x-2">
+                <span className="text-lg font-semibold text-primary">{litros.toFixed(0)}</span>
+                <span className="text-xs text-muted-foreground">/ {capacidad}L</span>
+                <Badge variant={getBadgeVariant()}>
+                    {porcentaje.toFixed(0)}%
+                </Badge>
             </div>
-            
-            {/* Contenedor del tanque minimalista */}
-            <div className="relative w-[120px] h-[180px] border-2 border-gray-300 rounded-md overflow-hidden">
+
+            {/* Progress bar */}
+            <div className="w-[120px]">
+                <Progress value={porcentaje} className="h-2" />
+            </div>
+
+            {/* Contenedor del tanque visual */}
+            <div className="relative w-[120px] h-[180px] border-2 border-border rounded-md overflow-hidden bg-card">
                 {/* Líquido del tanque */}
-                <div 
-                    className="absolute bottom-0 w-full bg-blue-500 transition-all duration-300"
+                <div
+                    className="absolute bottom-0 w-full bg-primary transition-all duration-300"
                     style={{
                         height: `${porcentaje}%`,
-                        opacity: 0.8
+                        opacity: 0.6
                     }}
                 />
-                
-                {/* Líneas de medición simplificadas */}
+
+                {/* Líneas de medición */}
                 <div className="absolute w-full h-full flex flex-col justify-between py-1">
                     {[...Array(3)].map((_, i) => (
                         <div key={i} className="flex items-center">
-                            <div className="border-b border-gray-300 w-2 ml-1"></div>
+                            <div className="border-b border-muted-foreground/30 w-2 ml-1"></div>
                         </div>
                     ))}
                 </div>
