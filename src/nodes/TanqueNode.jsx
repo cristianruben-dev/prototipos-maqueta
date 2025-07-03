@@ -1,20 +1,15 @@
 import { Handle, Position } from '@xyflow/react';
 import { Tanque } from '../components/tanque';
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
 export function TanqueNode({ data }) {
   return (
-    <Card className="min-w-[200px] relative">
-      <CardHeader>
-        <CardTitle className="text-sm text-center">{data.label}</CardTitle>
-      </CardHeader>
-
+    <Card className="min-w-[180px] relative p-4">
       <Tanque
         litros={data.litros || 0}
         capacidad={data.capacidad || 1000}
       />
 
-      {/* Handles de entrada y salida para todos los tanques */}
       <Handle
         type="target"
         position={Position.Left}
@@ -26,6 +21,10 @@ export function TanqueNode({ data }) {
         position={Position.Right}
         id="salida"
       />
+
+      <span className="text-xs text-muted-foreground text-center">
+        {data.label}
+      </span>
     </Card>
   );
 } 

@@ -78,6 +78,7 @@ export const initialEdges = [
     target: 'valvula-1',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
+    type: 'step',
   },
   {
     id: 'e2',
@@ -85,6 +86,7 @@ export const initialEdges = [
     target: 'valvula-2',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
+    type: 'step',
   },
   {
     id: 'e3',
@@ -92,6 +94,7 @@ export const initialEdges = [
     target: 'valvula-3',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
+    type: 'step',
   },
   {
     id: 'e4',
@@ -99,6 +102,7 @@ export const initialEdges = [
     target: 'tanque-secundario-1',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
+    type: 'step',
   },
   {
     id: 'e5',
@@ -106,5 +110,6 @@ export const initialEdges = [
     target: 'tanque-secundario-2',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
+    type: 'step',
   },
 ]; 

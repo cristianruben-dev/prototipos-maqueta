@@ -21,15 +21,20 @@ class Valvula:
             return 0.0
         return (self.presion / 100.0) * self.flujo_max
 
-    def actualizar_presion(self):
-        """Actualiza la presión con variación realista"""
-        if self.estado:
-            # Válvula abierta: presión alta y fluctuante
+    def actualizar_presion(self, hay_flujo_real=False):
+        """Actualiza la presión con variación realista basada en flujo real"""
+        if self.estado and hay_flujo_real:
+            # Válvula abierta CON flujo real: presión alta y fluctuante
             variacion = random.uniform(-1.0, 1.0)
             self.presion = max(75.0, min(85.0, self.presion + variacion))
+        elif self.estado and not hay_flujo_real:
+            # Válvula abierta SIN flujo: presión media (agua estancada)
+            variacion = random.uniform(-0.3, 0.3)
+            self.presion = max(15.0, min(25.0, self.presion + variacion))
         else:
-            # Válvula cerrada: presión baja y estable
-            self.presion = max(5.0, min(15.0, self.presion + random.uniform(-0.5, 0.5)))
+            # Válvula cerrada: presión muy baja y estable
+            variacion = random.uniform(-0.2, 0.2)
+            self.presion = max(2.0, min(8.0, self.presion + variacion))
 
 
 @dataclass
@@ -62,9 +67,9 @@ class Tanque:
 class SistemaSimulacion:
     def __init__(self):
         self.valvulas = {
-            1: Valvula(1, 5.0, False),  # Empezar con presión baja
-            2: Valvula(2, 5.0, False),
-            3: Valvula(3, 5.0, False),
+            1: Valvula(1, 3.0, False),  # Empezar con presión muy baja
+            2: Valvula(2, 3.0, False),
+            3: Valvula(3, 3.0, False),
         }
 
         self.tanques = {
@@ -124,9 +129,15 @@ class SistemaSimulacion:
         # Calcular flujos
         flujos = self.calcular_flujos()
 
-        # Actualizar válvulas
-        for valvula in self.valvulas.values():
-            valvula.actualizar_presion()
+        # Determinar qué válvulas tienen flujo real
+        hay_flujo_v1 = flujos["principal_a_v1"] > 0
+        hay_flujo_v2 = flujos["v2_a_s1"] > 0
+        hay_flujo_v3 = flujos["v3_a_s2"] > 0
+
+        # Actualizar válvulas con información de flujo real
+        self.valvulas[1].actualizar_presion(hay_flujo_v1)
+        self.valvulas[2].actualizar_presion(hay_flujo_v2)
+        self.valvulas[3].actualizar_presion(hay_flujo_v3)
 
         # Actualizar tanques
         for tanque in self.tanques.values():
@@ -236,9 +247,25 @@ def main():
             s2_pct = (datos["secundario2"] / 1000.0) * 100
 
             # Indicadores de estado
-            v1_estado = "🟢" if sistema.valvulas[1].estado else "🔴"
-            v2_estado = "🟢" if sistema.valvulas[2].estado else "🔴"
-            v3_estado = "🟢" if sistema.valvulas[3].estado else "🔴"
+            v1_flujo = flujos.get("principal_a_v1", 0) > 0
+            v2_flujo = flujos.get("v2_a_s1", 0) > 0
+            v3_flujo = flujos.get("v3_a_s2", 0) > 0
+
+            v1_estado = (
+                "🟢💧"
+                if (sistema.valvulas[1].estado and v1_flujo)
+                else "🟢⚪" if sistema.valvulas[1].estado else "🔴"
+            )
+            v2_estado = (
+                "🟢💧"
+                if (sistema.valvulas[2].estado and v2_flujo)
+                else "🟢⚪" if sistema.valvulas[2].estado else "🔴"
+            )
+            v3_estado = (
+                "🟢💧"
+                if (sistema.valvulas[3].estado and v3_flujo)
+                else "🟢⚪" if sistema.valvulas[3].estado else "🔴"
+            )
 
             s1_estado = "🚫LLENO" if s1_pct >= 99 else f"{s1_pct:.0f}%"
             s2_estado = "🚫LLENO" if s2_pct >= 99 else f"{s2_pct:.0f}%"
@@ -249,8 +276,10 @@ def main():
                 f"S2: {datos['secundario2']:.0f}L ({s2_estado})"
             )
             print(
-                f"🚿 Válvulas - V1: {v1_estado} | V2: {v2_estado} | V3: {v3_estado} | "
-                f"Flujo total: {datos.get('flujo_total', 0):.1f}L/s"
+                f"🚿 V1: {v1_estado} ({datos['valvula1_presion']:.1f}kPa) | "
+                f"V2: {v2_estado} ({datos['valvula2_presion']:.1f}kPa) | "
+                f"V3: {v3_estado} ({datos['valvula3_presion']:.1f}kPa) | "
+                f"Flujo: {datos.get('flujo_total', 0):.1f}L/s"
             )
 
             time.sleep(2)

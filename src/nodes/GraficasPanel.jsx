@@ -9,13 +9,13 @@ const graficasConfig = [
   { key: 'valvula3', titulo: 'Válvula 3', color: '#ffc658' }
 ];
 
-export function GraficasPanel({ datosGrafico, historia, connected }) {
+export function GraficasPanel({ datosGrafico, historia, connected, sessionStartTime, onLimpiarHistorial }) {
 
   return (
     <Panel position="center-right" className="m-4">
-      <Card className="w-[300px] max-h-[full] overflow-auto shadow-lg bg-neutral-100">
+      <Card className="w-[400px] max-h-[full] overflow-auto shadow-lg bg-neutral-100">
         <CardHeader>
-          <DownloadButton historia={historia} filename="historial_sistema.json" />
+          <DownloadButton historia={historia} filename="historial_sistema.json" sessionStartTime={sessionStartTime} onLimpiarHistorial={onLimpiarHistorial} />
         </CardHeader>
 
         <CardContent>
@@ -30,7 +30,7 @@ export function GraficasPanel({ datosGrafico, historia, connected }) {
                   color={color}
                   dataKey="presion"
                   unidad="kPa"
-                  domainMin={70}
+                  domainMin={0}
                   domainMax={90}
                   etiqueta="Presión"
                 />

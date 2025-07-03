@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -13,6 +13,7 @@ import { useMQTT } from './hook/useMQTT';
 import { TanqueNode } from './nodes/TanqueNode';
 import { ValvulaNode } from './nodes/ValvulaNode';
 import { GraficasPanel } from './nodes/GraficasPanel';
+import { ConnectionStatus } from './components/ConnectionStatus';
 import { initialNodes, initialEdges } from './config/nodePositions';
 import ConnectionLine from './components/ConnectionLine';
 
@@ -24,12 +25,18 @@ const nodeTypes = {
 export default function App() {
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges] = useEdgesState(initialEdges);
+  const [lastDataTime, setLastDataTime] = useState(null);
 
-  const { historia, agregarDatos, getDatosGrafico } = useDataHistory(10);
+  const { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial } = useDataHistory(60);
   const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
 
-  // Función simple sin useCallback para evitar problemas
-  const handleValvulaToggle = (id, estado) => {
+  // Memoizar datos de gráficas para evitar re-renders infinitos
+  const datosGrafico = useMemo(() => {
+    return getDatosGrafico();
+  }, [historia]);
+
+  // Función simple con useCallback para evitar re-renders
+  const handleValvulaToggle = useCallback((id, estado) => {
     const comando = {
       tipo: 'valvula',
       id: id,
@@ -38,7 +45,7 @@ export default function App() {
     if (sendCommand) {
       sendCommand('tanques/comandos', comando);
     }
-  };
+  }, [sendCommand]);
 
   // Actualizar cuando lleguen datos - MUY SIMPLIFICADO
   useEffect(() => {
@@ -46,6 +53,9 @@ export default function App() {
 
     try {
       const datos = JSON.parse(data);
+
+      // Actualizar timestamp de últimos datos
+      setLastDataTime(Date.now());
 
       const valvulas = [1, 2, 3].map(id => ({
         id,
@@ -57,7 +67,7 @@ export default function App() {
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, agregarDatos]);
+  }, [data, connected]);
 
   // Rehabilitamos la actualización de nodos de forma segura
   useEffect(() => {
@@ -69,14 +79,14 @@ export default function App() {
       // Actualizar nodos de forma controlada
       setNodes((prevNodes) => {
         return prevNodes.map((node) => {
-          // Crear copia del nodo
-          const updatedNode = { ...node };
-
           // Solo actualizar si hay cambios reales
           if (node.data.litrosKey && datos[node.data.litrosKey] !== node.data.litros) {
-            updatedNode.data = {
-              ...node.data,
-              litros: datos[node.data.litrosKey] || 0
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                litros: datos[node.data.litrosKey] || 0
+              }
             };
           }
 
@@ -86,25 +96,31 @@ export default function App() {
 
             // Solo actualizar si hay cambios
             if (nuevaPresion !== node.data.presion || nuevoEstado !== node.data.estado) {
-              updatedNode.data = {
-                ...node.data,
-                presion: nuevaPresion,
-                estado: nuevoEstado,
-                onToggle: handleValvulaToggle
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  presion: nuevaPresion,
+                  estado: nuevoEstado,
+                  onToggle: handleValvulaToggle
+                }
               };
             }
           }
 
-          return updatedNode;
+          return node;
         });
       });
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected]);
+  }, [data, connected, handleValvulaToggle]);
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full h-screen relative">
+      {/* Status de conexión y datos */}
+      <ConnectionStatus connected={connected} lastDataTime={lastDataTime} />
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -120,9 +136,11 @@ export default function App() {
         <Controls className="bg-card border border-border" />
 
         <GraficasPanel
-          datosGrafico={getDatosGrafico()}
+          datosGrafico={datosGrafico}
           historia={historia}
           connected={connected}
+          sessionStartTime={sessionStartTime}
+          onLimpiarHistorial={limpiarHistorial}
         />
       </ReactFlow>
     </div>

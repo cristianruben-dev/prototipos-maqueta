@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+import valvulaIcon from '../assets/valvula.png';
+
 export function Valvula({ id, presion, estado, onToggle }) {
   const [isOpen, setIsOpen] = useState(estado || false);
 
@@ -27,7 +29,7 @@ export function Valvula({ id, presion, estado, onToggle }) {
   };
 
   // Determinar si hay flujo basado en presión y estado
-  const hayFlujo = isOpen && presion > 50;
+  const hayFlujo = isOpen && presion > 70;
 
   return (
     <Card className="w-[230px] relative overflow-hidden">
@@ -38,23 +40,17 @@ export function Valvula({ id, presion, estado, onToggle }) {
         </div>
       )}
 
-      <Badge variant={isOpen ? "default" : "secondary"} className="absolute top-2 right-2 z-10">
-        {isOpen ? "Abierta" : "Cerrada"}
-      </Badge>
-
-      <CardContent className="relative z-10">
+      <CardContent className="z-10">
         <div className="space-y-3">
-          <span className="text-sm font-medium">Válvula {id}</span>
-
-          {/* Indicador de presión */}
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">Presión:</span>
-            <Badge variant={getPresionVariant()}>
-              {presion} kPa
-            </Badge>
+          <div className='flex items-center gap-2'>
+            <img src={valvulaIcon} alt="Valvula" className="size-8" />
+            <span className="text-sm font-medium">Válvula {id}</span>
           </div>
 
-          {/* Botón de control */}
+          <Badge className='text-xs absolute top-2 right-2' variant={getPresionVariant()}>
+            {presion} kPa
+          </Badge>
+          
           <Button
             onClick={handleToggle}
             variant={isOpen ? "destructive" : "default"}
