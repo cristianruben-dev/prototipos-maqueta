@@ -8,7 +8,6 @@ import valvulaIcon from '../assets/valvula.png';
 export function Valvula({ id, presion, estado, onToggle }) {
   const [isOpen, setIsOpen] = useState(estado || false);
 
-  // Sincronizar con el estado del MQTT
   useEffect(() => {
     setIsOpen(estado);
   }, [estado]);
@@ -28,39 +27,26 @@ export function Valvula({ id, presion, estado, onToggle }) {
     return "destructive";
   };
 
-  // Determinar si hay flujo basado en presión y estado
-  const hayFlujo = isOpen && presion > 70;
-
   return (
-    <Card className="w-[230px] relative overflow-hidden">
-      {/* Efecto de agua fluyendo */}
-      {hayFlujo && (
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="agua-flujo"></div>
-        </div>
-      )}
+    <div className="space-y-2.5">
 
-      <CardContent className="z-10">
-        <div className="space-y-3">
-          <div className='flex items-center gap-2'>
-            <img src={valvulaIcon} alt="Valvula" className="size-8" />
-            <span className="text-sm font-medium">Válvula {id}</span>
-          </div>
+      <Badge className='text-[10px] mx-auto border border-neutral-400 w-full' variant={getPresionVariant()}>
+        {presion} kPa
+      </Badge>
 
-          <Badge className='text-xs absolute top-2 right-2' variant={getPresionVariant()}>
-            {presion} kPa
-          </Badge>
-          
-          <Button
-            onClick={handleToggle}
-            variant={isOpen ? "destructive" : "default"}
-            className="w-full"
-            size="sm"
-          >
-            {isOpen ? "Cerrar" : "Abrir"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <div className='flex flex-col items-center justify-center gap-1'>
+        <span className="text-xs font-medium">Válvula {id}</span>
+        <img src={valvulaIcon} alt="Valvula" className="w-24 object-contain" />
+      </div>
+
+      <Button
+        onClick={handleToggle}
+        variant={isOpen ? "destructive" : "default"}
+        className="w-full"
+        size="sm"
+      >
+        {isOpen ? "Cerrar" : "Abrir"}
+      </Button>
+    </div>
   );
 } 

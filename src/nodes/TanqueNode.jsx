@@ -4,27 +4,31 @@ import { Card } from "@/components/ui/card";
 
 export function TanqueNode({ data }) {
   return (
-    <Card className="min-w-[180px] relative p-4">
-      <Tanque
-        litros={data.litros || 0}
-        capacidad={data.capacidad || 1000}
-      />
+    <div className='flex flex-col items-center'>
+      <Card className="min-w-[140px] relative p-3 py-4">
+        <Tanque
+          litros={data.litros || 0}
+          capacidad={data.capacidad || 1000}
+        />
 
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="entrada"
-      />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="entrada"
+        />
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="salida"
-      />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="salida"
+        />
 
-      <span className="text-xs text-muted-foreground text-center">
+
+      </Card>
+
+      <span className="text-xs text-muted-foreground text-center mt-2">
         {data.label}
       </span>
-    </Card>
+    </div>
   );
 } 

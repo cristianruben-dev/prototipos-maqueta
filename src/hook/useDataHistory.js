@@ -31,7 +31,7 @@ export function useDataHistory(maxMinutes = 15) {
 
   // Helper para actualizar una serie de datos
   const actualizarSerie = (seriePrev, nuevoValor) => {
-    const maxPuntos = 500; // Aumentado de 30 a 500 puntos por válvula
+    const maxPuntos = 2000;
     const maxTiempo = maxMinutes * 60 * 1000;
     const timestamp = Date.now();
     const tiempoLimite = timestamp - maxTiempo;

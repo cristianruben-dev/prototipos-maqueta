@@ -10,14 +10,13 @@ export function ValvulaNode({ data }) {
 
   return (
     <div className="relative">
-      {/* Handle de entrada nativo */}
       <Handle
         type="target"
         position={Position.Left}
+        className='mt-[30px]'
         id="entrada"
       />
 
-      {/* Componente Valvula */}
       <Valvula
         id={data.id}
         presion={data.presion || 0}
@@ -25,11 +24,11 @@ export function ValvulaNode({ data }) {
         onToggle={handleValvulaToggle}
       />
 
-      {/* Handle de salida nativo */}
       <Handle
         type="source"
         position={Position.Right}
         id="salida"
+        className='mt-[30px]'
       />
     </div>
   );

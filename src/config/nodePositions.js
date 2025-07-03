@@ -2,7 +2,7 @@ export const initialNodes = [
   {
     id: 'tanque-principal',
     type: 'tanque',
-    position: { x: 50, y: 270 },
+    position: { x: 100, y: 345 },
     data: {
       label: 'Tanque Principal',
       litrosKey: 'principal',
@@ -49,7 +49,7 @@ export const initialNodes = [
   {
     id: 'tanque-secundario-1',
     type: 'tanque',
-    position: { x: 950, y: 150 },
+    position: { x: 900, y: 150 },
     data: {
       label: 'Tanque Secundario 1',
       litrosKey: 'secundario1',
@@ -60,7 +60,7 @@ export const initialNodes = [
   {
     id: 'tanque-secundario-2',
     type: 'tanque',
-    position: { x: 950, y: 550 },
+    position: { x: 900, y: 550 },
     data: {
       label: 'Tanque Secundario 2',
       litrosKey: 'secundario2',
