@@ -1,15 +1,17 @@
+import React, { memo } from 'react';
 import { Panel } from '@xyflow/react';
 import { GraficaLinea } from '../components/GraficaLinea';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DownloadButton } from '../components/DownloadButton';
 
 const graficasConfig = [
-  { key: 'valvula1', titulo: 'Válvula 1', color: '#8884d8' },
-  { key: 'valvula2', titulo: 'Válvula 2', color: '#82ca9d' },
-  { key: 'valvula3', titulo: 'Válvula 3', color: '#ffc658' }
+  { key: 'sensor_pre_v1', titulo: 'Sensor Pre-V1', color: '#ff7c7c' },
+  { key: 'sensor_post_v1', titulo: 'Sensor Post-V1', color: '#87ceeb' },
+  { key: 'sensor_pre_v2', titulo: 'Sensor Pre-V2', color: '#ffa500' },
+  { key: 'sensor_post_v2', titulo: 'Sensor Post-V2', color: '#98fb98' }
 ];
 
-export function GraficasPanel({ datosGrafico, historia, connected, sessionStartTime, onLimpiarHistorial }) {
+const GraficasPanel = memo(function GraficasPanel({ datosGrafico, historia, connected, sessionStartTime, onLimpiarHistorial }) {
 
   return (
     <Panel position="center-right" className="m-4">
@@ -19,26 +21,25 @@ export function GraficasPanel({ datosGrafico, historia, connected, sessionStartT
         </CardHeader>
 
         <CardContent>
-          <div>
-            <h3 className="text-sm font-medium mb-3">Historial de Presión</h3>
-            <div className="grid grid-cols-1 gap-3">
-              {graficasConfig.map(({ key, titulo, color }) => (
-                <GraficaLinea
-                  key={key}
-                  datos={datosGrafico?.[key] || []}
-                  titulo={titulo}
-                  color={color}
-                  dataKey="presion"
-                  unidad="kPa"
-                  domainMin={0}
-                  domainMax={90}
-                  etiqueta="Presión"
-                />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 gap-3">
+            {graficasConfig.map(({ key, titulo, color }) => (
+              <GraficaLinea
+                key={key}
+                datos={datosGrafico?.[key] || []}
+                titulo={titulo}
+                color={color}
+                dataKey="presion"
+                unidad="kPa"
+                domainMin={0}
+                domainMax={90}
+                etiqueta="Presión"
+              />
+            ))}
           </div>
         </CardContent>
       </Card>
     </Panel>
   );
-} 
+});
+
+export { GraficasPanel }; 

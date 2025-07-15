@@ -1,7 +1,8 @@
+import React, { memo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function GraficaLinea({
+const GraficaLinea = memo(function GraficaLinea({
   datos,
   titulo,
   color = "#8884d8",
@@ -13,7 +14,7 @@ export function GraficaLinea({
 }) {
   if (!datos || datos.length === 0) {
     return (
-      <Card className="h-[200px]">
+      <Card className="h-[100px]">
         <CardHeader>
           <CardTitle className="text-xs font-medium">{titulo}</CardTitle>
         </CardHeader>
@@ -33,7 +34,7 @@ export function GraficaLinea({
         <CardTitle className="text-xs font-medium">{titulo}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[120px]">
+        <div className="h-[100px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={datos}
@@ -82,4 +83,6 @@ export function GraficaLinea({
       </CardContent>
     </Card>
   );
-} 
+});
+
+export { GraficaLinea }; 

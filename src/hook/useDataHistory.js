@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export function useDataHistory(maxMinutes = 15) {
   const [historia, setHistoria] = useState({
-    valvula1: [],
-    valvula2: [],
-    valvula3: []
+    sensor_pre_v1: [],
+    sensor_post_v1: [],
+    sensor_pre_v2: [],
+    sensor_post_v2: []
   });
   const [sessionStartTime, setSessionStartTime] = useState(null);
 
@@ -13,7 +14,26 @@ export function useDataHistory(maxMinutes = 15) {
     const sessionStart = localStorage.getItem('session_start_time');
 
     if (datosGuardados) {
-      setHistoria(JSON.parse(datosGuardados));
+      try {
+        const datosParseados = JSON.parse(datosGuardados);
+        // Migrar datos viejos al nuevo formato - Solo sensores
+        const datosNormalizados = {
+          sensor_pre_v1: datosParseados.sensor_pre_v1 || [],
+          sensor_post_v1: datosParseados.sensor_post_v1 || [],
+          sensor_pre_v2: datosParseados.sensor_pre_v2 || [],
+          sensor_post_v2: datosParseados.sensor_post_v2 || []
+        };
+        setHistoria(datosNormalizados);
+      } catch (error) {
+        console.warn('Error cargando historial, usando datos vacíos:', error);
+        // Si hay error, usar datos vacíos
+        setHistoria({
+          sensor_pre_v1: [],
+          sensor_post_v1: [],
+          sensor_pre_v2: [],
+          sensor_post_v2: []
+        });
+      }
     }
 
     if (sessionStart) {
@@ -29,8 +49,8 @@ export function useDataHistory(maxMinutes = 15) {
     localStorage.setItem('valvulas_historial', JSON.stringify(historia));
   }, [historia]);
 
-  // Helper para actualizar una serie de datos
-  const actualizarSerie = (seriePrev, nuevoValor) => {
+  // Helper para actualizar una serie de datos - MEMOIZADO
+  const actualizarSerie = useCallback((seriePrev, nuevoValor) => {
     const maxPuntos = 2000;
     const maxTiempo = maxMinutes * 60 * 1000;
     const timestamp = Date.now();
@@ -42,18 +62,31 @@ export function useDataHistory(maxMinutes = 15) {
 
     // Si después del filtro por tiempo aún hay demasiados puntos, mantener los más recientes
     return datosFiltradosPorTiempo.slice(-maxPuntos);
-  };
+  }, [maxMinutes]);
 
-  function agregarDatos(valvulas) {
-    setHistoria(prev => ({
-      valvula1: actualizarSerie(prev.valvula1, valvulas[0]?.presion || 0),
-      valvula2: actualizarSerie(prev.valvula2, valvulas[1]?.presion || 0),
-      valvula3: actualizarSerie(prev.valvula3, valvulas[2]?.presion || 0)
-    }));
-  }
+  const agregarDatos = useCallback((datosEntrada) => {
+    // Solo manejar sensores: { sensores: [...] }
+    setHistoria(prev => {
+      const nuevaHistoria = { ...prev };
 
-  const formatearDatos = (datos, dataKey) =>
-    datos.map(item => ({
+      // Actualizar solo sensores
+      if (datosEntrada.sensores) {
+        datosEntrada.sensores.forEach(sensor => {
+          if (nuevaHistoria[sensor.id]) {
+            nuevaHistoria[sensor.id] = actualizarSerie(nuevaHistoria[sensor.id], sensor.presion || 0);
+          }
+        });
+      }
+
+      return nuevaHistoria;
+    });
+  }, [actualizarSerie]);
+
+  const formatearDatos = useCallback((datos, dataKey) => {
+    if (!datos || !Array.isArray(datos)) {
+      return [];
+    }
+    return datos.map(item => ({
       time: new Date(item.time).toLocaleTimeString('es-ES', {
         hour12: false,
         hour: '2-digit',
@@ -62,27 +95,30 @@ export function useDataHistory(maxMinutes = 15) {
       }),
       [dataKey]: item.value
     }));
+  }, []);
 
-  function getDatosGrafico() {
+  const getDatosGrafico = useMemo(() => {
     return {
-      valvula1: formatearDatos(historia.valvula1, 'presion'),
-      valvula2: formatearDatos(historia.valvula2, 'presion'),
-      valvula3: formatearDatos(historia.valvula3, 'presion')
+      sensor_pre_v1: formatearDatos(historia.sensor_pre_v1, 'presion'),
+      sensor_post_v1: formatearDatos(historia.sensor_post_v1, 'presion'),
+      sensor_pre_v2: formatearDatos(historia.sensor_pre_v2, 'presion'),
+      sensor_post_v2: formatearDatos(historia.sensor_post_v2, 'presion')
     };
-  }
+  }, [historia, formatearDatos]);
 
-  // Función para limpiar historial
-  function limpiarHistorial() {
+  // Función para limpiar historial - MEMOIZADA
+  const limpiarHistorial = useCallback(() => {
     setHistoria({
-      valvula1: [],
-      valvula2: [],
-      valvula3: []
+      sensor_pre_v1: [],
+      sensor_post_v1: [],
+      sensor_pre_v2: [],
+      sensor_post_v2: []
     });
     const now = new Date();
     setSessionStartTime(now);
     localStorage.setItem('session_start_time', now.toISOString());
     localStorage.removeItem('valvulas_historial');
-  }
+  }, []);
 
   return { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial };
 }

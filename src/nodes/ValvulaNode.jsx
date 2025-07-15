@@ -13,13 +13,12 @@ export function ValvulaNode({ data }) {
       <Handle
         type="target"
         position={Position.Left}
-        className='mt-[30px]'
         id="entrada"
+        className='mt-[8px]'
       />
 
       <Valvula
         id={data.id}
-        presion={data.presion || 0}
         estado={data.estado || false}
         onToggle={handleValvulaToggle}
       />
@@ -28,7 +27,7 @@ export function ValvulaNode({ data }) {
         type="source"
         position={Position.Right}
         id="salida"
-        className='mt-[30px]'
+        className='mt-[8px]'
       />
     </div>
   );

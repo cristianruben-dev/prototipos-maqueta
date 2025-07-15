@@ -2,6 +2,7 @@
 import json
 import time
 import math
+import random
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
@@ -11,30 +12,52 @@ class SimuladorTanques:
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
+        self.client.on_message = self.on_message
 
-        # Estado inicial de los tanques (más realista)
+        # Estado inicial de los tanques - Nuevo sistema con 4 tanques
         self.tanques = {
-            "principal": {
-                "litros": 180.0,  # Empieza casi lleno
-                "capacidad": 200.0,
-                "presion_base": 2.5,
-                "flujo_salida": 2.5,  # L/s (aumentado para ser más visible)
-                "transferiendo": True,
+            "tanque_izq_1": {
+                "litros": 800.0,  # Tanques izquierdos empiezan llenos
+                "capacidad": 1000.0,
+                "presion_base": 2.0,
+                "flujo_salida": 0.0,  # Inicialmente sin flujo
+                "transferiendo": False,
             },
-            "tanque1": {
-                "litros": 10.0,  # Empieza con poco
-                "capacidad": 100.0,
+            "tanque_izq_2": {
+                "litros": 750.0,  # Tanques izquierdos empiezan llenos
+                "capacidad": 1000.0,
+                "presion_base": 1.8,
+                "flujo_salida": 0.0,  # Inicialmente sin flujo
+                "transferiendo": False,
+            },
+            "tanque_der_1": {
+                "litros": 0.0,  # Tanques derechos empiezan vacíos
+                "capacidad": 1000.0,
                 "presion_base": 1.2,
-                "flujo_entrada": 1.5,  # L/s (aumentado)
-                "transferiendo": True,
+                "flujo_entrada": 0.0,  # Inicialmente sin flujo
+                "transferiendo": False,
             },
-            "tanque2": {
-                "litros": 15.0,  # Empieza con poco
-                "capacidad": 100.0,
+            "tanque_der_2": {
+                "litros": 0.0,  # Tanques derechos empiezan vacíos
+                "capacidad": 1000.0,
                 "presion_base": 1.1,
-                "flujo_entrada": 1.0,  # L/s (aumentado)
-                "transferiendo": True,
+                "flujo_entrada": 0.0,  # Inicialmente sin flujo
+                "transferiendo": False,
             },
+        }
+
+        # Estados de válvulas
+        self.valvulas = {
+            "valvula1": {"estado": False, "presion_interna": 0.0},
+            "valvula2": {"estado": False, "presion_interna": 0.0},
+        }
+
+        # Sensores de presión independientes - empiezan en 0
+        self.sensores = {
+            "sensor_pre_v1": {"presion": 0.0},
+            "sensor_post_v1": {"presion": 0.0},
+            "sensor_pre_v2": {"presion": 0.0},
+            "sensor_post_v2": {"presion": 0.0},
         }
 
         # Variables para patrones más realistas
@@ -42,13 +65,38 @@ class SimuladorTanques:
         self.ciclo_transferencia = 0  # Para cambiar patrones de transferencia
         self.conectado = False
 
+
+
     def on_connect(self, client, userdata, flags, rc):
         print(f"✅ Conectado a MQTT con código: {rc}")
         self.conectado = True
+        # Suscribirse a comandos
+        client.subscribe("tanques/comandos")
+        print("🎛️  Escuchando comandos de válvulas...")
 
     def on_disconnect(self, client, userdata, rc):
         print(f"❌ Desconectado de MQTT")
         self.conectado = False
+
+    def on_message(self, client, userdata, msg):
+        """Maneja comandos recibidos para válvulas"""
+        try:
+            comando = json.loads(msg.payload.decode())
+            if comando.get("tipo") == "valvula":
+                valvula_id = comando.get("id")
+                estado = comando.get("estado")
+
+                if valvula_id in [1, 2]:
+                    valvula_key = f"valvula{valvula_id}"
+                    self.valvulas[valvula_key]["estado"] = estado
+                    print(
+                        f"🔧 Válvula {valvula_id} {'ABIERTA' if estado else 'CERRADA'}"
+                    )
+                else:
+                    print(f"⚠️  ID de válvula inválido: {valvula_id}")
+
+        except Exception as e:
+            print(f"❌ Error procesando comando: {e}")
 
     def calcular_presion_realista(self, tanque_info):
         """Calcula presión basada en nivel de líquido y patrones realistas"""
@@ -76,65 +124,169 @@ class SimuladorTanques:
         return max(0.0, presion_total)
 
     def actualizar_transferencia(self, dt):
-        """Simula transferencia realista entre tanques"""
-        tiempo_actual = time.time() - self.tiempo_inicio
+        """Simula transferencia del nuevo sistema con fuente externa hacia tanques izquierdos"""
 
-        # Cambiar patrón de transferencia cada 30 segundos (más rápido)
-        if int(tiempo_actual / 30) != self.ciclo_transferencia:
-            self.ciclo_transferencia = int(tiempo_actual / 30)
-            # Alternar si está transfiriendo o no
-            self.tanques["principal"]["transferiendo"] = not self.tanques["principal"][
-                "transferiendo"
-            ]
-            estado = (
-                "Transfiriendo"
-                if self.tanques["principal"]["transferiendo"]
-                else "Pausado"
+        # Obtener tanques
+        izq1 = self.tanques["tanque_izq_1"]
+        izq2 = self.tanques["tanque_izq_2"]
+        der1 = self.tanques["tanque_der_1"]
+        der2 = self.tanques["tanque_der_2"]
+
+        # Resetear flujos
+        izq1["flujo_salida"] = 0
+        izq2["flujo_salida"] = 0
+        der1["flujo_entrada"] = 0
+        der2["flujo_entrada"] = 0
+
+        # Calcular presiones en sensores basado en niveles de tanques izquierdos (sin fuente externa)
+        nivel_promedio_izq = (izq1["litros"] + izq2["litros"]) / 2000  # Normalizar
+        presion_base_tuberia = (
+            nivel_promedio_izq * 50
+        )  # Sin presión adicional de fuente externa
+
+        # **NUEVA LÓGICA EN SERIE: Ambas válvulas deben estar abiertas para el flujo**
+        valvulas_en_serie_abiertas = (
+            self.valvulas["valvula1"]["estado"] and self.valvulas["valvula2"]["estado"]
+        )
+
+        if valvulas_en_serie_abiertas and (izq1["litros"] > 5 or izq2["litros"] > 5):
+            # Solo hay flujo si AMBAS válvulas están abiertas
+            flujo_base = 6.0  # L/s base cuando ambas válvulas están abiertas
+
+            flujo_izq1 = (
+                min(flujo_base * dt * 0.5, izq1["litros"] - 2)
+                if izq1["litros"] > 5
+                else 0
             )
-            print(f"🔄 Cambio de ciclo: {estado}")
+            flujo_izq2 = (
+                min(flujo_base * dt * 0.5, izq2["litros"] - 2)
+                if izq2["litros"] > 5
+                else 0
+            )
 
-        # Solo transferir si está activado
-        if not self.tanques["principal"]["transferiendo"]:
-            return
+            flujo_total = flujo_izq1 + flujo_izq2
 
-        principal = self.tanques["principal"]
-        tanque1 = self.tanques["tanque1"]
-        tanque2 = self.tanques["tanque2"]
+            # Verificar espacio en tanques destino
+            espacio_der1 = der1["capacidad"] - der1["litros"]
+            espacio_der2 = der2["capacidad"] - der2["litros"]
+            espacio_total = espacio_der1 + espacio_der2
 
-        # Solo transferir si el principal tiene líquido
-        if principal["litros"] > 5:  # Reducido el límite mínimo
-            # Calcular flujo según presión (más presión = más flujo)
-            factor_presion = max(
-                0.3, principal["litros"] / principal["capacidad"]
-            )  # Mínimo 30%
-            flujo_actual = principal["flujo_salida"] * factor_presion * dt
-
-            # No transferir más de lo disponible
-            flujo_actual = min(flujo_actual, principal["litros"] - 5)
-
-            # Dividir flujo entre tanque1 y tanque2 (60% y 40%)
-            flujo_tanque1 = flujo_actual * 0.6
-            flujo_tanque2 = flujo_actual * 0.4
-
-            # Verificar capacidad de tanques receptores
-            espacio_tanque1 = tanque1["capacidad"] - tanque1["litros"]
-            espacio_tanque2 = tanque2["capacidad"] - tanque2["litros"]
-
-            flujo_tanque1 = min(flujo_tanque1, espacio_tanque1)
-            flujo_tanque2 = min(flujo_tanque2, espacio_tanque2)
-
-            # Realizar transferencia
-            flujo_total = flujo_tanque1 + flujo_tanque2
+            # Limitar flujo por espacio disponible
+            flujo_total = min(flujo_total, espacio_total)
 
             if flujo_total > 0:
-                principal["litros"] -= flujo_total
-                tanque1["litros"] += flujo_tanque1
-                tanque2["litros"] += flujo_tanque2
+                # Distribuir flujo proporcionalmente según espacio disponible
+                if espacio_total > 0:
+                    proporcion_der1 = espacio_der1 / espacio_total
+                    proporcion_der2 = espacio_der2 / espacio_total
 
-                # Asegurar límites
-                principal["litros"] = max(0, principal["litros"])
-                tanque1["litros"] = min(tanque1["capacidad"], tanque1["litros"])
-                tanque2["litros"] = min(tanque2["capacidad"], tanque2["litros"])
+                    flujo_a_der1 = flujo_total * proporcion_der1
+                    flujo_a_der2 = flujo_total * proporcion_der2
+
+                    # Calcular proporciones de salida basadas en disponibilidad
+                    total_disponible = (izq1["litros"] - 2) + (izq2["litros"] - 2)
+                    if total_disponible > 0:
+                        proporcion_salida_izq1 = (
+                            (izq1["litros"] - 2) / total_disponible
+                            if izq1["litros"] > 2
+                            else 0
+                        )
+                        proporcion_salida_izq2 = (
+                            (izq2["litros"] - 2) / total_disponible
+                            if izq2["litros"] > 2
+                            else 0
+                        )
+                    else:
+                        proporcion_salida_izq1 = 0.5
+                        proporcion_salida_izq2 = 0.5
+
+                    salida_izq1 = flujo_total * proporcion_salida_izq1
+                    salida_izq2 = flujo_total * proporcion_salida_izq2
+
+                    # Actualizar tanques
+                    izq1["litros"] -= salida_izq1
+                    izq2["litros"] -= salida_izq2
+                    der1["litros"] += flujo_a_der1
+                    der2["litros"] += flujo_a_der2
+
+                    # Actualizar registros de flujo
+                    izq1["flujo_salida"] = salida_izq1 / dt
+                    izq2["flujo_salida"] = salida_izq2 / dt
+                    der1["flujo_entrada"] = flujo_a_der1 / dt
+                    der2["flujo_entrada"] = flujo_a_der2 / dt
+
+            # Actualizar presiones en sensores - CON FLUJO (ambas válvulas abiertas)
+            self.sensores["sensor_pre_v1"]["presion"] = (
+                presion_base_tuberia + random.uniform(-2, 2)
+            )
+            self.sensores["sensor_post_v1"]["presion"] = (
+                presion_base_tuberia * 0.9
+            ) + random.uniform(-1, 1)
+            self.sensores["sensor_pre_v2"]["presion"] = (
+                presion_base_tuberia * 0.8
+            ) + random.uniform(-1.5, 1.5)
+            self.sensores["sensor_post_v2"]["presion"] = (
+                presion_base_tuberia * 0.7
+            ) + random.uniform(-1, 1)
+
+            self.valvulas["valvula1"]["presion_interna"] = presion_base_tuberia * 0.9
+            self.valvulas["valvula2"]["presion_interna"] = presion_base_tuberia * 0.8
+
+        else:
+            # SIN FLUJO - Al menos una válvula está cerrada o no hay suficiente líquido
+
+            # Presiones cuando no hay flujo completo
+            if self.valvulas["valvula1"]["estado"]:
+                # V1 abierta pero V2 cerrada o sin líquido: presión se acumula antes de V2
+                self.sensores["sensor_pre_v1"]["presion"] = max(
+                    0, presion_base_tuberia * 0.6 + random.uniform(-1, 1)
+                )
+                self.sensores["sensor_post_v1"]["presion"] = max(
+                    0, presion_base_tuberia * 0.5 + random.uniform(-1, 1)
+                )
+
+                if self.valvulas["valvula2"]["estado"]:
+                    # V1 abierta, V2 abierta, pero no hay suficiente líquido
+                    self.sensores["sensor_pre_v2"]["presion"] = max(
+                        0, presion_base_tuberia * 0.3 + random.uniform(-1, 1)
+                    )
+                    self.sensores["sensor_post_v2"]["presion"] = max(
+                        0, random.uniform(0, 2)
+                    )
+                else:
+                    # V1 abierta, V2 cerrada: presión se acumula antes de V2
+                    self.sensores["sensor_pre_v2"]["presion"] = max(
+                        0, presion_base_tuberia * 0.4 + random.uniform(-1, 1)
+                    )
+                    self.sensores["sensor_post_v2"]["presion"] = max(
+                        0, random.uniform(0, 1)
+                    )
+
+                self.valvulas["valvula1"]["presion_interna"] = 8.0
+                self.valvulas["valvula2"]["presion_interna"] = (
+                    4.0 if self.valvulas["valvula2"]["estado"] else 2.0
+                )
+            else:
+                # V1 cerrada: sin flujo en todo el sistema
+                self.sensores["sensor_pre_v1"]["presion"] = max(
+                    0, presion_base_tuberia * 0.2 + random.uniform(-0.5, 0.5)
+                )
+                self.sensores["sensor_post_v1"]["presion"] = max(
+                    0, random.uniform(0, 1)
+                )
+                self.sensores["sensor_pre_v2"]["presion"] = max(
+                    0, random.uniform(0, 0.5)
+                )
+                self.sensores["sensor_post_v2"]["presion"] = max(
+                    0, random.uniform(0, 0.5)
+                )
+
+                self.valvulas["valvula1"]["presion_interna"] = 2.0
+                self.valvulas["valvula2"]["presion_interna"] = 1.0
+
+        # Asegurar límites en todos los tanques
+        for tanque in self.tanques.values():
+            tanque["litros"] = max(0, min(tanque["capacidad"], tanque["litros"]))
 
     def simular_ciclo(self):
         """Un ciclo de simulación"""
@@ -143,30 +295,34 @@ class SimuladorTanques:
         # Actualizar transferencia
         self.actualizar_transferencia(dt)
 
-        # Calcular presiones realistas
+        # Calcular presiones realistas para tanques
         for tanque in self.tanques.values():
             tanque["presion"] = self.calcular_presion_realista(tanque)
 
-        # Preparar datos para envío
+        # Preparar datos para envío - Nuevo formato
         datos = {
             "timestamp": datetime.now().isoformat(),
-            "principal": {
-                "litros": round(self.tanques["principal"]["litros"], 1),
-                "presion": round(self.tanques["principal"]["presion"], 2),
-            },
-            "tanque1": {
-                "litros": round(self.tanques["tanque1"]["litros"], 1),
-                "presion": round(self.tanques["tanque1"]["presion"], 2),
-            },
-            "tanque2": {
-                "litros": round(self.tanques["tanque2"]["litros"], 1),
-                "presion": round(self.tanques["tanque2"]["presion"], 2),
-            },
-            "estado": (
-                "transfiriendo"
-                if self.tanques["principal"]["transferiendo"]
-                else "pausado"
+            # Tanques
+            "tanque_izq_1": round(self.tanques["tanque_izq_1"]["litros"], 1),
+            "tanque_izq_2": round(self.tanques["tanque_izq_2"]["litros"], 1),
+            "tanque_der_1": round(self.tanques["tanque_der_1"]["litros"], 1),
+            "tanque_der_2": round(self.tanques["tanque_der_2"]["litros"], 1),
+            # Válvulas - presión interna y estado
+            "valvula1_presion_interna": round(
+                self.valvulas["valvula1"]["presion_interna"], 1
             ),
+            "valvula1_estado": self.valvulas["valvula1"]["estado"],
+            "valvula2_presion_interna": round(
+                self.valvulas["valvula2"]["presion_interna"], 1
+            ),
+            "valvula2_estado": self.valvulas["valvula2"]["estado"],
+            # Sensores de presión independientes
+            "sensor_pre_v1": round(self.sensores["sensor_pre_v1"]["presion"], 1),
+            "sensor_post_v1": round(self.sensores["sensor_post_v1"]["presion"], 1),
+            "sensor_pre_v2": round(self.sensores["sensor_pre_v2"]["presion"], 1),
+            "sensor_post_v2": round(self.sensores["sensor_post_v2"]["presion"], 1),
+            # Estado general del sistema
+            "sistema_activo": any(v["estado"] for v in self.valvulas.values()),
         }
 
         return datos
@@ -188,9 +344,9 @@ class SimuladorTanques:
                 print("❌ No se pudo conectar a MQTT")
                 return
 
-            print("🚀 Iniciando simulación RÁPIDA de tanques...")
-            print("📊 Patrón: Transferencia cada 30 segundos (más visible)")
-            print("⚡ Flujo aumentado para visualización más rápida")
+            print("🚀 Iniciando simulación del nuevo sistema de 4 tanques...")
+            print("📊 Sistema: 2 tanques izquierda → 2 válvulas → 2 tanques derecha")
+            print("🔧 Control: Válvulas independientes con sensores de presión")
             print("💡 Ctrl+C para detener")
 
             while True:
@@ -200,17 +356,31 @@ class SimuladorTanques:
                 mensaje = json.dumps(datos)
                 self.client.publish("tanques/datos", mensaje)
 
-                # Log cada 5 segundos (más frecuente)
+                # Log cada 3 segundos
                 tiempo_actual = time.time() - self.tiempo_inicio
-                if int(tiempo_actual) % 5 == 0:
-                    estado = datos["estado"]
-                    p = datos["principal"]
-                    t1 = datos["tanque1"]
-                    t2 = datos["tanque2"]
+                if int(tiempo_actual) % 3 == 0:
+                    sistema_activo = datos["sistema_activo"]
+
+                    # Información de tanques
+                    izq1 = datos["tanque_izq_1"]
+                    izq2 = datos["tanque_izq_2"]
+                    der1 = datos["tanque_der_1"]
+                    der2 = datos["tanque_der_2"]
+
+                    # Estados de válvulas
+                    v1_estado = "🟢" if datos["valvula1_estado"] else "🔴"
+                    v2_estado = "🟢" if datos["valvula2_estado"] else "🔴"
+
+                    # Log de estado
+                    print(f"📊 {'[ACTIVO]' if sistema_activo else '[PAUSADO]'}")
                     print(
-                        f"📊 [{estado.upper()}] Principal: {p['litros']}L ({p['presion']}bar) | "
-                        f"T1: {t1['litros']}L ({t1['presion']}bar) | "
-                        f"T2: {t2['litros']}L ({t2['presion']}bar)"
+                        f"   Izq: T1={izq1}L, T2={izq2}L | Der: T1={der1}L, T2={der2}L"
+                    )
+                    print(
+                        f"   Válvulas: V1={v1_estado}({datos['valvula1_presion_interna']}kPa) | V2={v2_estado}({datos['valvula2_presion_interna']}kPa)"
+                    )
+                    print(
+                        f"   Sensores: Pre-V1={datos['sensor_pre_v1']}kPa, Post-V1={datos['sensor_post_v1']}kPa"
                     )
 
                 time.sleep(1)

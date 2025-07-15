@@ -12,6 +12,7 @@ import { useDataHistory } from './hook/useDataHistory';
 import { useMQTT } from './hook/useMQTT';
 import { TanqueNode } from './nodes/TanqueNode';
 import { ValvulaNode } from './nodes/ValvulaNode';
+import { SensorNode } from './nodes/SensorNode';
 import { GraficasPanel } from './nodes/GraficasPanel';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { initialNodes, initialEdges } from './config/nodePositions';
@@ -20,6 +21,7 @@ import ConnectionLine from './components/ConnectionLine';
 const nodeTypes = {
   tanque: TanqueNode,
   valvula: ValvulaNode,
+  sensor: SensorNode,
 };
 
 export default function App() {
@@ -30,13 +32,12 @@ export default function App() {
   const { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial } = useDataHistory(60);
   const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
 
-  // Memoizar datos de gráficas para evitar re-renders infinitos
-  const datosGrafico = useMemo(() => {
-    return getDatosGrafico();
-  }, [historia]);
+  // Usar getDatosGrafico directamente ya que está memoizado en el hook
+  const datosGrafico = getDatosGrafico;
 
   // Función simple con useCallback para evitar re-renders
   const handleValvulaToggle = useCallback((id, estado) => {
+    console.log(`🔧 Intentando cambiar válvula ${id} a ${estado ? 'ABIERTA' : 'CERRADA'}`);
     const comando = {
       tipo: 'valvula',
       id: id,
@@ -44,10 +45,32 @@ export default function App() {
     };
     if (sendCommand) {
       sendCommand('tanques/comandos', comando);
+      console.log(`📤 Comando enviado a tanques/comandos:`, comando);
+    } else {
+      console.error('❌ sendCommand no disponible');
     }
   }, [sendCommand]);
 
-  // Actualizar cuando lleguen datos - MUY SIMPLIFICADO
+  // INICIALIZAR NODOS DE VÁLVULAS CON onToggle desde el inicio
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      return prevNodes.map((node) => {
+        // Asignar onToggle a nodos de válvulas desde el inicio
+        if (node.type === 'valvula' && !node.data.onToggle) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onToggle: handleValvulaToggle
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [handleValvulaToggle]); // Solo se ejecuta una vez cuando handleValvulaToggle esté listo
+
+  // Actualización de nodos para el nuevo sistema
   useEffect(() => {
     if (!data || !connected) return;
 
@@ -57,19 +80,29 @@ export default function App() {
       // Actualizar timestamp de últimos datos
       setLastDataTime(Date.now());
 
-      const valvulas = [1, 2, 3].map(id => ({
-        id,
-        presion: datos[`valvula${id}_presion`] || 0,
-        estado: datos[`valvula${id}_estado`] || false
-      }));
-      agregarDatos(valvulas);
+      // Preparar datos para histórico - ahora incluye válvulas y sensores
+      const datosHistorico = {
+        valvulas: [1, 2].map(id => ({
+          id,
+          presion: datos[`valvula${id}_presion_interna`] || 0,
+          estado: datos[`valvula${id}_estado`] || false
+        })),
+        sensores: [
+          { id: 'sensor_pre_v1', presion: datos['sensor_pre_v1'] || 0 },
+          { id: 'sensor_post_v1', presion: datos['sensor_post_v1'] || 0 },
+          { id: 'sensor_pre_v2', presion: datos['sensor_pre_v2'] || 0 },
+          { id: 'sensor_post_v2', presion: datos['sensor_post_v2'] || 0 },
+        ]
+      };
+
+      agregarDatos(datosHistorico);
 
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected]);
+  }, [data, connected, agregarDatos]); // agregarDatos está memoizada, es seguro incluirla
 
-  // Rehabilitamos la actualización de nodos de forma segura
+  // Actualización de nodos para el nuevo sistema
   useEffect(() => {
     if (!data || !connected) return;
 
@@ -79,7 +112,7 @@ export default function App() {
       // Actualizar nodos de forma controlada
       setNodes((prevNodes) => {
         return prevNodes.map((node) => {
-          // Solo actualizar si hay cambios reales
+          // Actualizar tanques
           if (node.data.litrosKey && datos[node.data.litrosKey] !== node.data.litros) {
             return {
               ...node,
@@ -90,19 +123,36 @@ export default function App() {
             };
           }
 
-          if (node.data.presionKey) {
+          // Actualizar válvulas (identificadas por presionKey Y estadoKey)
+          if (node.data.presionKey && node.data.estadoKey && node.type === 'valvula') {
             const nuevaPresion = datos[node.data.presionKey] || 0;
             const nuevoEstado = datos[node.data.estadoKey] || false;
 
-            // Solo actualizar si hay cambios
-            if (nuevaPresion !== node.data.presion || nuevoEstado !== node.data.estado) {
+            // Actualizar si hay cambios o si falta onToggle
+            if (nuevaPresion !== node.data.presion || nuevoEstado !== node.data.estado || !node.data.onToggle) {
               return {
                 ...node,
                 data: {
                   ...node.data,
                   presion: nuevaPresion,
                   estado: nuevoEstado,
-                  onToggle: handleValvulaToggle
+                  onToggle: handleValvulaToggle // Asegurar que siempre esté presente
+                }
+              };
+            }
+          }
+
+          // Actualizar sensores de presión (solo presionKey, sin estadoKey)
+          if (node.data.presionKey && !node.data.estadoKey && node.type === 'sensor') {
+            const nuevaPresion = datos[node.data.presionKey] || 0;
+
+            // Solo actualizar si hay cambios
+            if (nuevaPresion !== node.data.presion) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  presion: nuevaPresion
                 }
               };
             }
