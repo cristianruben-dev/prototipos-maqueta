@@ -17,11 +17,13 @@ import { GraficasPanel } from './nodes/GraficasPanel';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { initialNodes, initialEdges } from './config/nodePositions';
 import ConnectionLine from './components/ConnectionLine';
+import ConnectionNode from './nodes/ConnectionNode';
 
 const nodeTypes = {
   tanque: TanqueNode,
   valvula: ValvulaNode,
   sensor: SensorNode,
+  connection: ConnectionNode,
 };
 
 export default function App() {

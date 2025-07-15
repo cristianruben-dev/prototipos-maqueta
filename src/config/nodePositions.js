@@ -23,11 +23,21 @@ export const initialNodes = [
     },
   },
 
-  // Sensor entrada tubería principal (más cerca)
+  // Conector para unir tanques izquierdos
+  {
+    id: 'conector-entrada',
+    type: 'connection',
+    position: { x: 400, y: 420 },
+    data: {
+      label: 'Entrada'
+    },
+  },
+
+  // Sensor entrada tubería principal
   {
     id: 'sensor-pre-v1',
     type: 'sensor',
-    position: { x: 470, y: 348 },
+    position: { x: 480, y: 348 },
     data: {
       label: 'Pre-V1',
       presionKey: 'sensor_pre_v1',
@@ -39,7 +49,7 @@ export const initialNodes = [
   {
     id: 'valvula-1',
     type: 'valvula',
-    position: { x: 510, y: 325 },
+    position: { x: 520, y: 325 },
     data: {
       id: 1,
       estadoKey: 'valvula1_estado',
@@ -52,7 +62,7 @@ export const initialNodes = [
   {
     id: 'sensor-post-v1',
     type: 'sensor',
-    position: { x: 585, y: 348 },
+    position: { x: 595, y: 348 },
     data: {
       label: 'Post-V1',
       presionKey: 'sensor_post_v1',
@@ -101,6 +111,16 @@ export const initialNodes = [
     },
   },
 
+  // Conector para distribuir a tanques derechos
+  {
+    id: 'conector-salida',
+    type: 'connection',
+    position: { x: 1090, y: 420 },
+    data: {
+      label: 'Salida'
+    },
+  },
+
   // Tanques lado derecho
   {
     id: 'tanque-der-1',
@@ -126,29 +146,39 @@ export const initialNodes = [
   },
 ];
 
-// Configuración inicial de conexiones - Válvulas en línea
+// Configuración inicial de conexiones - Válvulas en línea con conectores
 export const initialEdges = [
-  // Desde tanques izquierda al primer sensor
+  // Desde tanques izquierda al conector de entrada
   {
     id: 'e1',
     source: 'tanque-izq-1',
-    target: 'sensor-pre-v1',
+    target: 'conector-entrada',
     sourceHandle: 'salida',
-    targetHandle: 'entrada',
+    targetHandle: 'bottom',
     type: 'step',
   },
   {
     id: 'e2',
     source: 'tanque-izq-2',
-    target: 'sensor-pre-v1',
+    target: 'conector-entrada',
     sourceHandle: 'salida',
+    targetHandle: 'bottom',
+    type: 'step',
+  },
+
+  // Desde conector de entrada al sensor pre-v1
+  {
+    id: 'e3',
+    source: 'conector-entrada',
+    target: 'sensor-pre-v1',
+    sourceHandle: 'right-out',
     targetHandle: 'entrada',
     type: 'step',
   },
 
   // Flujo en línea: sensor → válvula1 → sensor → válvula2 → sensor
   {
-    id: 'e3',
+    id: 'e4',
     source: 'sensor-pre-v1',
     target: 'valvula-1',
     sourceHandle: 'salida',
@@ -156,7 +186,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e4',
+    id: 'e5',
     source: 'valvula-1',
     target: 'sensor-post-v1',
     sourceHandle: 'salida',
@@ -164,7 +194,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e5',
+    id: 'e6',
     source: 'sensor-post-v1',
     target: 'sensor-pre-v2',
     sourceHandle: 'salida',
@@ -172,7 +202,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e6',
+    id: 'e7',
     source: 'sensor-pre-v2',
     target: 'valvula-2',
     sourceHandle: 'salida',
@@ -180,7 +210,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e7',
+    id: 'e8',
     source: 'valvula-2',
     target: 'sensor-post-v2',
     sourceHandle: 'salida',
@@ -188,20 +218,30 @@ export const initialEdges = [
     type: 'step',
   },
 
-  // Desde sensor final hacia tanques derecha
+  // Desde sensor final hacia conector de salida
   {
-    id: 'e8',
+    id: 'e9',
     source: 'sensor-post-v2',
-    target: 'tanque-der-1',
+    target: 'conector-salida',
     sourceHandle: 'salida',
+    targetHandle: 'left',
+    type: 'step',
+  },
+
+  // Desde conector de salida hacia tanques derecha
+  {
+    id: 'e10',
+    source: 'conector-salida',
+    target: 'tanque-der-1',
+    sourceHandle: 'bottom-out',
     targetHandle: 'entrada',
     type: 'step',
   },
   {
-    id: 'e9',
-    source: 'sensor-post-v2',
+    id: 'e11',
+    source: 'conector-salida',
     target: 'tanque-der-2',
-    sourceHandle: 'salida',
+    sourceHandle: 'bottom-out',
     targetHandle: 'entrada',
     type: 'step',
   },
