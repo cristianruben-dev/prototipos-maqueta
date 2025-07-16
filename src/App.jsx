@@ -18,18 +18,23 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { initialNodes, initialEdges } from './config/nodePositions';
 import ConnectionLine from './components/ConnectionLine';
 import ConnectionNode from './nodes/ConnectionNode';
+import TomaClandestina from './nodes/TomaClandestinaNode';
+import AlertaTomas from './components/AlertaTomas';
 
 const nodeTypes = {
   tanque: TanqueNode,
   valvula: ValvulaNode,
   sensor: SensorNode,
   connection: ConnectionNode,
+  toma: TomaClandestina,
 };
 
 export default function App() {
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges] = useEdgesState(initialEdges);
   const [lastDataTime, setLastDataTime] = useState(null);
+  const [tomasActivas, setTomasActivas] = useState([]);
+  const [showAlerta, setShowAlerta] = useState(false);
 
   const { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial } = useDataHistory(60);
   const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
@@ -53,7 +58,29 @@ export default function App() {
     }
   }, [sendCommand]);
 
-  // INICIALIZAR NODOS DE VÁLVULAS CON onToggle desde el inicio
+  // Función para manejar el toggle de tomas clandestinas
+  const handleTomaToggle = useCallback((tomaId, nuevoEstado) => {
+    console.log(`🚰 Intentando cambiar toma ${tomaId} a ${nuevoEstado ? 'ABIERTA' : 'CERRADA'}`);
+    
+    // DEBUG específico para toma 2
+    if (tomaId === 2) {
+      console.log(`🔍 DEBUG TOMA 2: sendCommand disponible = ${!!sendCommand}, connected = ${connected}`);
+    }
+    
+    const comando = {
+      tipo: 'toma_clandestina',
+      id: tomaId,
+      estado: nuevoEstado
+    };
+    if (sendCommand) {
+      sendCommand('tanques/comandos', comando);
+      console.log(`📤 Comando enviado a tanques/comandos:`, comando);
+    } else {
+      console.error('❌ sendCommand no disponible');
+    }
+  }, [sendCommand, connected]);
+
+  // INICIALIZAR NODOS DE VÁLVULAS Y TOMAS CON onToggle desde el inicio
   useEffect(() => {
     setNodes((prevNodes) => {
       return prevNodes.map((node) => {
@@ -67,10 +94,20 @@ export default function App() {
             }
           };
         }
+        // Asignar onToggle a nodos de tomas clandestinas desde el inicio
+        if (node.type === 'toma' && !node.data.onToggle) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onToggle: handleTomaToggle
+            }
+          };
+        }
         return node;
       });
     });
-  }, [handleValvulaToggle]); // Solo se ejecuta una vez cuando handleValvulaToggle esté listo
+  }, [handleValvulaToggle, handleTomaToggle]); // Solo se ejecuta una vez cuando ambos callbacks estén listos
 
   // Actualización de nodos para el nuevo sistema
   useEffect(() => {
@@ -110,6 +147,9 @@ export default function App() {
 
     try {
       const datos = JSON.parse(data);
+
+      // DEBUG: Log completo de datos MQTT
+      console.log('📨 Datos MQTT recibidos:', datos);
 
       // Actualizar nodos de forma controlada
       setNodes((prevNodes) => {
@@ -160,18 +200,80 @@ export default function App() {
             }
           }
 
+          // Actualizar tomas clandestinas
+          if (node.type === 'toma') {
+            const estadoKey = `toma${node.data.id}_estado`;
+            const flujoKey = `toma${node.data.id}_flujo`;
+
+            const nuevoEstado = datos[estadoKey] || false;
+            const nuevoFlujo = datos[flujoKey] || 0;
+
+            // DEBUG: Agregar logs para debuggear
+            console.log(`🔍 DEBUG Toma ${node.data.id}:`, {
+              estadoKey,
+              flujoKey,
+              nuevoEstado,
+              nuevoFlujo,
+              estadoAnterior: node.data.estado,
+              flujoAnterior: node.data.flujo,
+              datosBrutos: { [estadoKey]: datos[estadoKey], [flujoKey]: datos[flujoKey] }
+            });
+
+            // Actualizar si hay cambios o si falta onToggle
+            if (nuevoEstado !== node.data.estado || nuevoFlujo !== node.data.flujo || !node.data.onToggle) {
+              console.log(`🔄 Actualizando toma ${node.data.id}: ${node.data.estado} -> ${nuevoEstado}`);
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  estado: nuevoEstado,
+                  flujo: nuevoFlujo,
+                  onToggle: handleTomaToggle // Asegurar que siempre esté presente
+                }
+              };
+            }
+          }
+
           return node;
         });
       });
+
+      // Detectar tomas clandestinas activas
+      const tomasDetectadas = [];
+      if (datos.toma1_estado && datos.toma1_flujo > 0) {
+        tomasDetectadas.push({
+          nombre: 'Toma Post-V1',
+          flujo: datos.toma1_flujo
+        });
+      }
+      if (datos.toma2_estado && datos.toma2_flujo > 0) {
+        tomasDetectadas.push({
+          nombre: 'Toma Post-V2',
+          flujo: datos.toma2_flujo
+        });
+      }
+
+      // Actualizar alertas
+      setTomasActivas(tomasDetectadas);
+      setShowAlerta(tomasDetectadas.length > 0);
+
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, handleValvulaToggle]);
+  }, [data, connected, handleValvulaToggle, handleTomaToggle]);
 
   return (
     <div className="w-full h-screen relative">
       {/* Status de conexión y datos */}
       <ConnectionStatus connected={connected} lastDataTime={lastDataTime} />
+
+      {/* Alertas de tomas clandestinas */}
+      {showAlerta && (
+        <AlertaTomas
+          tomasActivas={tomasActivas}
+          onClose={() => setShowAlerta(false)}
+        />
+      )}
 
       <ReactFlow
         nodes={nodes}

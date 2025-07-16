@@ -72,6 +72,19 @@ export const initialNodes = [
     },
   },
 
+  // Toma clandestina después de sensor post-V1
+  {
+    id: 'toma-1',
+    type: 'toma',
+    position: { x: 675, y: 276 },
+    data: {
+      id: 1,
+      label: 'Toma Post-V1',
+      estado: false,
+      flujo: 0,
+    },
+  },
+
   {
     id: 'sensor-pre-v2',
     type: 'sensor',
@@ -108,6 +121,19 @@ export const initialNodes = [
       presion: 0,
       tipo: 'salida',
       hideHandles: false
+    },
+  },
+
+  // Toma clandestina después de sensor post-V2
+  {
+    id: 'toma-2',
+    type: 'toma',
+    position: { x: 955, y: 276 },
+    data: {
+      id: 2,
+      label: 'Toma Post-V2',
+      estado: false,
+      flujo: 0,
     },
   },
 
@@ -196,13 +222,21 @@ export const initialEdges = [
   {
     id: 'e6',
     source: 'sensor-post-v1',
-    target: 'sensor-pre-v2',
+    target: 'toma-1',
     sourceHandle: 'salida',
     targetHandle: 'entrada',
     type: 'step',
   },
   {
     id: 'e7',
+    source: 'toma-1',
+    target: 'sensor-pre-v2',
+    sourceHandle: 'salida',
+    targetHandle: 'entrada',
+    type: 'step',
+  },
+  {
+    id: 'e8',
     source: 'sensor-pre-v2',
     target: 'valvula-2',
     sourceHandle: 'salida',
@@ -210,7 +244,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e8',
+    id: 'e9',
     source: 'valvula-2',
     target: 'sensor-post-v2',
     sourceHandle: 'salida',
@@ -218,10 +252,20 @@ export const initialEdges = [
     type: 'step',
   },
 
-  // Desde sensor final hacia conector de salida
+  // Desde sensor post-v2 hacia toma-2
   {
-    id: 'e9',
+    id: 'e10',
     source: 'sensor-post-v2',
+    target: 'toma-2',
+    sourceHandle: 'salida',
+    targetHandle: 'entrada',
+    type: 'step',
+  },
+
+  // Desde toma-2 hacia conector de salida
+  {
+    id: 'e11',
+    source: 'toma-2',
     target: 'conector-salida',
     sourceHandle: 'salida',
     targetHandle: 'left',
@@ -230,7 +274,7 @@ export const initialEdges = [
 
   // Desde conector de salida hacia tanques derecha
   {
-    id: 'e10',
+    id: 'e12',
     source: 'conector-salida',
     target: 'tanque-der-1',
     sourceHandle: 'bottom-out',
@@ -238,7 +282,7 @@ export const initialEdges = [
     type: 'step',
   },
   {
-    id: 'e11',
+    id: 'e13',
     source: 'conector-salida',
     target: 'tanque-der-2',
     sourceHandle: 'bottom-out',
