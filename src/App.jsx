@@ -219,19 +219,16 @@ export default function App() {
               datosBrutos: { [estadoKey]: datos[estadoKey], [flujoKey]: datos[flujoKey] }
             });
 
-            // Actualizar si hay cambios o si falta onToggle
-            if (nuevoEstado !== node.data.estado || nuevoFlujo !== node.data.flujo || !node.data.onToggle) {
-              console.log(`🔄 Actualizando toma ${node.data.id}: ${node.data.estado} -> ${nuevoEstado}`);
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  estado: nuevoEstado,
-                  flujo: nuevoFlujo,
-                  onToggle: handleTomaToggle // Asegurar que siempre esté presente
-                }
-              };
-            }
+            // SIEMPRE actualizar las tomas clandestinas para asegurar sincronización
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                estado: nuevoEstado,
+                flujo: nuevoFlujo,
+                onToggle: handleTomaToggle // Asegurar que siempre esté presente
+              }
+            };
           }
 
           return node;
