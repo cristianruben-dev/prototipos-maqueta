@@ -21,7 +21,7 @@ export function Valvula({ id, estado, onToggle }) {
   return (
     <div className="space-y-2">
       <div className='flex flex-col items-center justify-center gap-1'>
-        <span className="text-xs font-medium">Válvula {id}</span>
+        <span className="text-xs font-medium opacity-0">Válvula {id}</span>
         <img src={valvulaIcon} alt="Valvula" className="w-20 object-contain" />
       </div>
 
@@ -29,7 +29,7 @@ export function Valvula({ id, estado, onToggle }) {
         <Button
           onClick={handleToggle}
           variant={isOpen ? "destructive" : "default"}
-          className="w-fit text-xs mx-auto"
+          className="w-fit text-[9px] mx-auto py-0"
           size="sm"
         >
           {isOpen ? "Cerrar" : "Abrir"}

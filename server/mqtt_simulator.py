@@ -33,9 +33,8 @@ class Valvula:
             variacion = random.uniform(-0.3, 0.3)
             self.presion = max(15.0, min(25.0, self.presion + variacion))
         else:
-            # Válvula cerrada: presión muy baja y estable
-            variacion = random.uniform(-0.2, 0.2)
-            self.presion = max(2.0, min(8.0, self.presion + variacion))
+            # Válvula cerrada: presión interna prácticamente 0 (físicamente correcto)
+            self.presion = max(0.0, min(0.5, random.uniform(0.0, 0.5)))
 
 
 @dataclass
@@ -202,7 +201,7 @@ class SistemaSimulacion:
         else:
             # SIN FLUJO - Al menos una válvula está cerrada o no hay suficiente líquido
 
-            # Presiones cuando no hay flujo completo
+            # Presiones cuando no hay flujo completo - COMPORTAMIENTO FÍSICAMENTE CORRECTO
             if self.valvulas[1].estado:
                 # V1 abierta pero V2 cerrada o sin líquido: presión se acumula antes de V2
                 self.sensores["sensor_pre_v1"]["presion"] = max(
@@ -217,31 +216,25 @@ class SistemaSimulacion:
                     self.sensores["sensor_pre_v2"]["presion"] = max(
                         0, presion_base_tuberia * 0.3 + random.uniform(-1, 1)
                     )
-                    self.sensores["sensor_post_v2"]["presion"] = max(
-                        0, random.uniform(0, 2)
-                    )
+                    # Sin flujo real = presión cero después de V2
+                    self.sensores["sensor_post_v2"]["presion"] = 0.0
                 else:
-                    # V1 abierta, V2 cerrada: presión se acumula antes de V2
+                    # V1 abierta, V2 CERRADA: presión se acumula antes de V2, CERO después
                     self.sensores["sensor_pre_v2"]["presion"] = max(
                         0, presion_base_tuberia * 0.4 + random.uniform(-1, 1)
                     )
-                    self.sensores["sensor_post_v2"]["presion"] = max(
-                        0, random.uniform(0, 1)
-                    )
+                    # V2 cerrada = presión 0 después de la válvula
+                    self.sensores["sensor_post_v2"]["presion"] = 0.0
             else:
-                # V1 cerrada: sin flujo en todo el sistema
+                # V1 CERRADA: sin flujo en todo el sistema
+                # Presión residual antes de V1 (de tanques)
                 self.sensores["sensor_pre_v1"]["presion"] = max(
                     0, presion_base_tuberia * 0.2 + random.uniform(-0.5, 0.5)
                 )
-                self.sensores["sensor_post_v1"]["presion"] = max(
-                    0, random.uniform(0, 1)
-                )
-                self.sensores["sensor_pre_v2"]["presion"] = max(
-                    0, random.uniform(0, 0.5)
-                )
-                self.sensores["sensor_post_v2"]["presion"] = max(
-                    0, random.uniform(0, 0.5)
-                )
+                # V1 cerrada = presión 0 en todo el sistema después de V1
+                self.sensores["sensor_post_v1"]["presion"] = 0.0
+                self.sensores["sensor_pre_v2"]["presion"] = 0.0
+                self.sensores["sensor_post_v2"]["presion"] = 0.0
 
         return flujos
 

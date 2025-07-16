@@ -75,7 +75,7 @@ export const initialNodes = [
   {
     id: 'sensor-pre-v2',
     type: 'sensor',
-    position: { x: 865, y: 348 },
+    position: { x: 755, y: 348 },
     data: {
       label: 'Pre-V2',
       presionKey: 'sensor_pre_v2',
@@ -88,7 +88,7 @@ export const initialNodes = [
   {
     id: 'valvula-2',
     type: 'valvula',
-    position: { x: 900, y: 325 },
+    position: { x: 790, y: 325 },
     data: {
       id: 2,
       estadoKey: 'valvula2_estado',
@@ -101,7 +101,7 @@ export const initialNodes = [
   {
     id: 'sensor-post-v2',
     type: 'sensor',
-    position: { x: 975, y: 348 },
+    position: { x: 865, y: 348 },
     data: {
       label: 'Post-V2',
       presionKey: 'sensor_post_v2',
