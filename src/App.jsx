@@ -1,40 +1,36 @@
-import { useEffect, useMemo, useCallback, useState } from 'react';
-import {
-  ReactFlow,
-  useNodesState,
-  useEdgesState,
-  Controls,
-  Background,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-
+import { useEffect, useCallback, useState } from 'react';
 import { useDataHistory } from './hook/useDataHistory';
 import { useMQTT } from './hook/useMQTT';
-import { TanqueNode } from './nodes/TanqueNode';
-import { ValvulaNode } from './nodes/ValvulaNode';
-import { SensorNode } from './nodes/SensorNode';
-import { GraficasPanel } from './nodes/GraficasPanel';
+import { Tanque } from './components/tanque';
+import { Valvula } from './components/valvula';
+import { Sensor } from './components/sensor';
+import { GraficasPanel } from './components/GraficasPanel';
 import { ConnectionStatus } from './components/ConnectionStatus';
-import { initialNodes, initialEdges } from './config/nodePositions';
-import ConnectionLine from './components/ConnectionLine';
-import ConnectionNode from './nodes/ConnectionNode';
-import TomaClandestina from './nodes/TomaClandestinaNode';
+import { initialNodes } from './config/nodePositions';
 import AlertaTomas from './components/AlertaTomas';
+import ValvulasPanel from './components/ValvulasPanel';
+import { PlusIcon } from 'lucide-react';
+import { MinusIcon } from 'lucide-react';
+import { RefreshCcwDotIcon } from 'lucide-react';
+import { Button } from './components/ui/button';
 
-const nodeTypes = {
-  tanque: TanqueNode,
-  valvula: ValvulaNode,
-  sensor: SensorNode,
-  connection: ConnectionNode,
-  toma: TomaClandestina,
+const nodeComponents = {
+  tanque: Tanque,
+  valvula: Valvula,
+  sensor: Sensor,
 };
 
 export default function App() {
-  const [nodes, setNodes] = useNodesState(initialNodes);
-  const [edges] = useEdgesState(initialEdges);
+  const [nodes, setNodes] = useState(initialNodes);
   const [lastDataTime, setLastDataTime] = useState(null);
   const [tomasActivas, setTomasActivas] = useState([]);
   const [showAlerta, setShowAlerta] = useState(false);
+  const [simulandoFuga, setSimulandoFuga] = useState(false);
+  const [imageScale, setImageScale] = useState(1);
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [highlightedValvula, setHighlightedValvula] = useState(null);
 
   const { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial } = useDataHistory(60);
   const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
@@ -44,47 +40,39 @@ export default function App() {
 
   // Función simple con useCallback para evitar re-renders
   const handleValvulaToggle = useCallback((id, estado) => {
-    console.log(`🔧 Intentando cambiar válvula ${id} a ${estado ? 'ABIERTA' : 'CERRADA'}`);
     const comando = {
       tipo: 'valvula',
       id: id,
       estado: estado
     };
+
     if (sendCommand) {
       sendCommand('tanques/comandos', comando);
-      console.log(`📤 Comando enviado a tanques/comandos:`, comando);
-    } else {
-      console.error('❌ sendCommand no disponible');
     }
   }, [sendCommand]);
 
-  // Función para manejar el toggle de tomas clandestinas
-  const handleTomaToggle = useCallback((tomaId, nuevoEstado) => {
-    console.log(`🚰 Intentando cambiar toma ${tomaId} a ${nuevoEstado ? 'ABIERTA' : 'CERRADA'}`);
-    
-    // DEBUG específico para toma 2
-    if (tomaId === 2) {
-      console.log(`🔍 DEBUG TOMA 2: sendCommand disponible = ${!!sendCommand}, connected = ${connected}`);
-    }
-    
-    const comando = {
-      tipo: 'toma_clandestina',
-      id: tomaId,
-      estado: nuevoEstado
-    };
-    if (sendCommand) {
-      sendCommand('tanques/comandos', comando);
-      console.log(`📤 Comando enviado a tanques/comandos:`, comando);
+  // Función para simular alertas de fuga
+  const handleSimularFuga = useCallback(() => {
+    setSimulandoFuga(prev => !prev);
+    if (!simulandoFuga) {
+      // Simular alertas de fuga
+      setTomasActivas([
+        { nombre: 'Posible Fuga Detectada - Zona 1', flujo: 1.2 },
+        { nombre: 'Posible Fuga Detectada - Zona 2', flujo: 0.8 }
+      ]);
+      setShowAlerta(true);
     } else {
-      console.error('❌ sendCommand no disponible');
+      // Limpiar alertas
+      setTomasActivas([]);
+      setShowAlerta(false);
     }
-  }, [sendCommand, connected]);
+  }, [simulandoFuga]);
 
   // INICIALIZAR NODOS DE VÁLVULAS Y TOMAS CON onToggle desde el inicio
   useEffect(() => {
     setNodes((prevNodes) => {
       return prevNodes.map((node) => {
-        // Asignar onToggle a nodos de válvulas desde el inicio
+        // Inicializar onToggle para válvulas
         if (node.type === 'valvula' && !node.data.onToggle) {
           return {
             ...node,
@@ -94,20 +82,11 @@ export default function App() {
             }
           };
         }
-        // Asignar onToggle a nodos de tomas clandestinas desde el inicio
-        if (node.type === 'toma' && !node.data.onToggle) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              onToggle: handleTomaToggle
-            }
-          };
-        }
+        // Tomas clandestinas removidas
         return node;
       });
     });
-  }, [handleValvulaToggle, handleTomaToggle]); // Solo se ejecuta una vez cuando ambos callbacks estén listos
+  }, [handleValvulaToggle]);
 
   // Actualización de nodos para el nuevo sistema
   useEffect(() => {
@@ -139,7 +118,7 @@ export default function App() {
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, agregarDatos]); // agregarDatos está memoizada, es seguro incluirla
+  }, [data, connected, agregarDatos]);
 
   // Actualización de nodos para el nuevo sistema
   useEffect(() => {
@@ -148,8 +127,7 @@ export default function App() {
     try {
       const datos = JSON.parse(data);
 
-      // DEBUG: Log completo de datos MQTT
-      console.log('📨 Datos MQTT recibidos:', datos);
+
 
       // Actualizar nodos de forma controlada
       setNodes((prevNodes) => {
@@ -178,7 +156,7 @@ export default function App() {
                   ...node.data,
                   presion: nuevaPresion,
                   estado: nuevoEstado,
-                  onToggle: handleValvulaToggle // Asegurar que siempre esté presente
+                  onToggle: handleValvulaToggle
                 }
               };
             }
@@ -200,92 +178,137 @@ export default function App() {
             }
           }
 
-          // Actualizar tomas clandestinas
-          if (node.type === 'toma') {
-            const estadoKey = `toma${node.data.id}_estado`;
-            const flujoKey = `toma${node.data.id}_flujo`;
-
-            const nuevoEstado = datos[estadoKey] || false;
-            const nuevoFlujo = datos[flujoKey] || 0;
-
-            // DEBUG: Agregar logs para debuggear
-            console.log(`🔍 DEBUG Toma ${node.data.id}:`, {
-              estadoKey,
-              flujoKey,
-              nuevoEstado,
-              nuevoFlujo,
-              estadoAnterior: node.data.estado,
-              flujoAnterior: node.data.flujo,
-              datosBrutos: { [estadoKey]: datos[estadoKey], [flujoKey]: datos[flujoKey] }
-            });
-
-            // SIEMPRE actualizar las tomas clandestinas para asegurar sincronización
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                estado: nuevoEstado,
-                flujo: nuevoFlujo,
-                onToggle: handleTomaToggle // Asegurar que siempre esté presente
-              }
-            };
-          }
+          // Tomas clandestinas removidas
 
           return node;
         });
       });
 
-      // Detectar tomas clandestinas activas
-      const tomasDetectadas = [];
-      if (datos.toma1_estado && datos.toma1_flujo > 0) {
-        tomasDetectadas.push({
-          nombre: 'Toma Post-V1',
-          flujo: datos.toma1_flujo
-        });
-      }
-      if (datos.toma2_estado && datos.toma2_flujo > 0) {
-        tomasDetectadas.push({
-          nombre: 'Toma Post-V2',
-          flujo: datos.toma2_flujo
-        });
-      }
-
-      // Actualizar alertas
-      setTomasActivas(tomasDetectadas);
-      setShowAlerta(tomasDetectadas.length > 0);
+      // Detección de tomas clandestinas removida - solo alertas simuladas
 
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, handleValvulaToggle, handleTomaToggle]);
+  }, [data, connected, handleValvulaToggle]);
+
+  // Funciones para manejar la imagen
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - imagePosition.x,
+      y: e.clientY - imagePosition.y
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setImagePosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Funciones para el highlight de válvulas
+  const handleValvulaHover = useCallback((valvulaId) => {
+    setHighlightedValvula(valvulaId);
+  }, []);
+
+  const handleValvulaLeave = useCallback(() => {
+    setHighlightedValvula(null);
+  }, []);
 
   return (
-    <div className="w-full h-screen relative">
-      {/* Status de conexión y datos */}
-      <ConnectionStatus connected={connected} lastDataTime={lastDataTime} />
+    <div
+      className="w-full h-screen flex bg-gray-100 overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+    >
+      {/* Panel izquierdo para el viewport */}
+      <div className="flex-1 relative bg-white border-r border-gray-300 overflow-hidden">
+        {/* Viewport unificado que contiene tanto el fondo como los nodos */}
+        <div
+          className="absolute inset-0 cursor-move"
+          onMouseDown={handleMouseDown}
+          style={{
+            transform: `translate(${imagePosition.x}px, ${imagePosition.y}px) scale(${imageScale})`,
+            transformOrigin: '0 0',
+            width: '2000px',
+            height: '1500px'
+          }}
+        >
+          {/* Imagen SCADA de fondo */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: 'url("/src/assets/scada.png")',
+              backgroundSize: '70%',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center top 50px left 40px'
+            }}
+          />
 
-      {/* Alertas de tomas clandestinas */}
-      {showAlerta && (
-        <AlertaTomas
-          tomasActivas={tomasActivas}
-          onClose={() => setShowAlerta(false)}
-        />
-      )}
+          {/* Nodos flotantes con posición absoluta dentro del viewport */}
+          {nodes.map((node) => {
+            const NodeComponent = nodeComponents[node.type];
+            if (!NodeComponent) return null;
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        connectionLineComponent={ConnectionLine}
-      >
-        <Background
-          color="#f1f1f1"
-          gap={20}
-          size={2}
-          variant="lines"
-        />
-        <Controls className="bg-card border border-border" />
+            // Renderizar diferentes tipos de nodos con sus props específicas
+            let nodeContent;
 
+            if (node.type === 'tanque') {
+              nodeContent = (
+                <NodeComponent
+                  litros={node.data.litros || 0}
+                  capacidad={node.data.capacidad || 1000}
+                />
+              );
+            } else if (node.type === 'valvula') {
+              const isHighlighted = highlightedValvula === node.id;
+              nodeContent = (
+                <div
+                  className={`transition-all duration-200 ${isHighlighted && 'ring-2 ring-blue-400 ring-opacity-75 rounded-lg scale-110 ring-offset-4'
+                    }`}
+                >
+                  <NodeComponent
+                    id={node.data.id}
+                    estado={node.data.estado || false}
+                    onToggle={node.data.onToggle}
+                  />
+                </div>
+              );
+            } else if (node.type === 'sensor') {
+              nodeContent = (
+                <NodeComponent
+                  presion={node.data.presion || 0}
+                  label={node.data.label || "Sensor"}
+                  tipo={node.data.tipo || "entrada"}
+                />
+              );
+            }
+
+            return (
+              <div
+                key={node.id}
+                className="absolute z-10"
+                style={{
+                  left: `${node.position.x}px`,
+                  top: `${node.position.y}px`
+                }}
+              >
+                {nodeContent}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Panel derecho fijo para las gráficas */}
+      <div className="w-[420px] bg-gray-50 border-l border-gray-300 flex flex-col">
         <GraficasPanel
           datosGrafico={datosGrafico}
           historia={historia}
@@ -293,7 +316,60 @@ export default function App() {
           sessionStartTime={sessionStartTime}
           onLimpiarHistorial={limpiarHistorial}
         />
-      </ReactFlow>
+      </div>
+
+      <ConnectionStatus connected={connected} lastDataTime={lastDataTime} />
+
+      {showAlerta && (
+        <AlertaTomas tomasActivas={tomasActivas} />
+      )}
+
+      <div className="absolute bottom-44 left-4 z-20 flex flex-col gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setImageScale(prev => Math.min(3, prev * 1.2))}
+        >
+          <PlusIcon />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setImageScale(prev => Math.max(0.1, prev * 0.8))}
+        >
+          <MinusIcon />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => {
+            setImageScale(1);
+            setImagePosition({ x: 0, y: 0 });
+          }}
+        >
+          <RefreshCcwDotIcon />
+        </Button>
+      </div>
+
+      {/* Botón de simulación de fugas en la esquina inferior derecha */}
+      <div className="absolute bottom-44 right-[440px] z-20">
+        <button
+          onClick={handleSimularFuga}
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${simulandoFuga
+            ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
+            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'
+            }`}
+        >
+          {simulandoFuga ? '🛑 Detener Simulación' : '⚠️ Simular Fuga'}
+        </button>
+      </div>
+
+      <ValvulasPanel
+        nodes={nodes}
+        onValvulaToggle={handleValvulaToggle}
+        onValvulaHover={handleValvulaHover}
+        onValvulaLeave={handleValvulaLeave}
+      />
     </div>
   );
 }

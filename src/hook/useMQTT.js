@@ -35,7 +35,6 @@ export function useMQTT(brokerUrl, topic) {
     if (clientRef.current && connected) {
       const mensaje = JSON.stringify(command);
       clientRef.current.publish(commandTopic, mensaje);
-      console.log(`📤 Comando enviado:`, command);
     }
   }, [connected]);
 

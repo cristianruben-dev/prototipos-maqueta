@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ClockIcon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export function ConnectionStatus({ connected, lastDataTime }) {
   const [showOverlay, setShowOverlay] = useState(true);
-  const [statusType, setStatusType] = useState('connecting'); // 'connecting', 'waiting', 'connected'
+  const [statusType, setStatusType] = useState('connecting');
 
   useEffect(() => {
     if (!connected) {
@@ -12,7 +12,6 @@ export function ConnectionStatus({ connected, lastDataTime }) {
       return;
     }
 
-    // Si está conectado pero no hay datos recientes (últimos 5 segundos)
     const now = Date.now();
     const timeSinceLastData = now - (lastDataTime || 0);
 
@@ -27,21 +26,6 @@ export function ConnectionStatus({ connected, lastDataTime }) {
 
   if (!showOverlay) return null;
 
-  const getIcon = () => {
-    switch (statusType) {
-      case 'connecting':
-        return (
-          <Loader2 className="animate-spin size-8 text-yellow-500" />
-        );
-      case 'waiting':
-        return (
-          <ClockIcon className="animate-pulse size-8 text-yellow-500" />
-        );
-      default:
-        return null;
-    }
-  };
-
   const getTitle = () => {
     switch (statusType) {
       case 'connecting':
@@ -53,27 +37,13 @@ export function ConnectionStatus({ connected, lastDataTime }) {
     }
   };
 
-  const getDescription = () => {
-    switch (statusType) {
-      case 'connecting':
-        return 'Estableciendo conexión con el broker MQTT...';
-      case 'waiting':
-        return 'El broker MQTT está conectado pero el simulador no está enviando datos.';
-      default:
-        return 'Sistema funcionando correctamente';
-    }
-  };
-
   return (
-    <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-card border border-border rounded-lg p-8 shadow-lg text-center max-w-md">
-        <div className="flex justify-center items-center mb-4">
-          {getIcon()}
+    <div className="absolute top-10 left-10 z-50">
+      <div className="bg-card border border-border rounded p-4 text-center flex items-center gap-4">
+        <div className="flex justify-center items-center">
+          <Loader2 className="animate-spin size-8 text-yellow-500" />
         </div>
-        <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
-        <p className="text-muted-foreground mb-4">
-          {getDescription()}
-        </p>
+        <h2 className="text-xl font-semibold">{getTitle()}</h2>
       </div>
     </div>
   );

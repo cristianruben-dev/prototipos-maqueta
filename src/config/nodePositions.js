@@ -1,9 +1,8 @@
 export const initialNodes = [
-  // Tanques lado izquierdo
   {
     id: 'tanque-izq-1',
     type: 'tanque',
-    position: { x: 340, y: 500 },
+    position: { x: 43, y: 195 },
     data: {
       label: 'Tanque Izq 1',
       litrosKey: 'tanque_izq_1',
@@ -12,9 +11,21 @@ export const initialNodes = [
     },
   },
   {
+    id: 'valvula-tanque-izq-1',
+    type: 'valvula',
+    position: { x: 164, y: 313 },
+    data: {
+      id: 3,
+      estadoKey: 'valvula_tanque_izq_1_estado',
+      presionKey: 'valvula_tanque_izq_1_presion',
+      estado: false,
+      presion: 0,
+    },
+  },
+  {
     id: 'tanque-izq-2',
     type: 'tanque',
-    position: { x: 420, y: 500 },
+    position: { x: 43, y: 420 },
     data: {
       label: 'Tanque Izq 2',
       litrosKey: 'tanque_izq_2',
@@ -22,34 +33,33 @@ export const initialNodes = [
       capacidad: 1000
     },
   },
-
-  // Conector para unir tanques izquierdos
   {
-    id: 'conector-entrada',
-    type: 'connection',
-    position: { x: 400, y: 420 },
+    id: 'valvula-tanque-izq-2',
+    type: 'valvula',
+    position: { x: 164, y: 538 },
     data: {
-      label: 'Entrada'
+      id: 4,
+      estadoKey: 'valvula_tanque_izq_2_estado',
+      presionKey: 'valvula_tanque_izq_2_presion',
+      estado: false,
+      presion: 0,
     },
   },
-
-  // Sensor entrada tubería principal
   {
     id: 'sensor-pre-v1',
     type: 'sensor',
-    position: { x: 480, y: 348 },
+    position: { x: 538, y: 266 },
     data: {
       label: 'Pre-V1',
       presionKey: 'sensor_pre_v1',
       presion: 0,
-      tipo: 'entrada',
-      hideHandles: false
+      tipo: 'entrada'
     },
   },
   {
     id: 'valvula-1',
     type: 'valvula',
-    position: { x: 520, y: 325 },
+    position: { x: 570, y: 312 },
     data: {
       id: 1,
       estadoKey: 'valvula1_estado',
@@ -62,46 +72,31 @@ export const initialNodes = [
   {
     id: 'sensor-post-v1',
     type: 'sensor',
-    position: { x: 595, y: 348 },
+    position: { x: 592, y: 266 },
     data: {
       label: 'Post-V1',
       presionKey: 'sensor_post_v1',
       presion: 0,
-      tipo: 'salida',
-      hideHandles: false
-    },
-  },
-
-  // Toma clandestina después de sensor post-V1
-  {
-    id: 'toma-1',
-    type: 'toma',
-    position: { x: 675, y: 276 },
-    data: {
-      id: 1,
-      label: 'Toma Post-V1',
-      estado: false,
-      flujo: 0,
+      tipo: 'salida'
     },
   },
 
   {
     id: 'sensor-pre-v2',
     type: 'sensor',
-    position: { x: 755, y: 348 },
+    position: { x: 887, y: 158 },
     data: {
       label: 'Pre-V2',
       presionKey: 'sensor_pre_v2',
       presion: 0,
-      tipo: 'entrada',
-      hideHandles: false
+      tipo: 'entrada'
     },
   },
 
   {
     id: 'valvula-2',
     type: 'valvula',
-    position: { x: 790, y: 325 },
+    position: { x: 919, y: 204 },
     data: {
       id: 2,
       estadoKey: 'valvula2_estado',
@@ -110,48 +105,26 @@ export const initialNodes = [
       presion: 0,
     },
   },
-
   {
     id: 'sensor-post-v2',
     type: 'sensor',
-    position: { x: 865, y: 348 },
+    position: { x: 940, y: 158 },
     data: {
       label: 'Post-V2',
       presionKey: 'sensor_post_v2',
       presion: 0,
-      tipo: 'salida',
-      hideHandles: false
+      tipo: 'salida'
     },
   },
 
-  // Toma clandestina después de sensor post-V2
-  {
-    id: 'toma-2',
-    type: 'toma',
-    position: { x: 955, y: 276 },
-    data: {
-      id: 2,
-      label: 'Toma Post-V2',
-      estado: false,
-      flujo: 0,
-    },
-  },
 
-  // Conector para distribuir a tanques derechos
-  {
-    id: 'conector-salida',
-    type: 'connection',
-    position: { x: 1090, y: 420 },
-    data: {
-      label: 'Salida'
-    },
-  },
+
 
   // Tanques lado derecho
   {
     id: 'tanque-der-1',
     type: 'tanque',
-    position: { x: 1030, y: 500 },
+    position: { x: 1280, y: 30 },
     data: {
       label: 'Tanque Der 1',
       litrosKey: 'tanque_der_1',
@@ -159,10 +132,23 @@ export const initialNodes = [
       capacidad: 1000
     },
   },
+  // Válvula de entrada tanque derecho 1
+  {
+    id: 'valvula-tanque-der-1',
+    type: 'valvula',
+    position: { x: 1208, y: 150 },
+    data: {
+      id: 5,
+      estadoKey: 'valvula_tanque_der_1_estado',
+      presionKey: 'valvula_tanque_der_1_presion',
+      estado: false,
+      presion: 0,
+    },
+  },
   {
     id: 'tanque-der-2',
     type: 'tanque',
-    position: { x: 1100, y: 500 },
+    position: { x: 1280, y: 255 },
     data: {
       label: 'Tanque Der 2',
       litrosKey: 'tanque_der_2',
@@ -170,123 +156,18 @@ export const initialNodes = [
       capacidad: 1000
     },
   },
+  {
+    id: 'valvula-tanque-der-2',
+    type: 'valvula',
+    position: { x: 1208, y: 375 },
+    data: {
+      id: 6,
+      estadoKey: 'valvula_tanque_der_2_estado',
+      presionKey: 'valvula_tanque_der_2_presion',
+      estado: false,
+      presion: 0,
+    },
+  },
 ];
 
-// Configuración inicial de conexiones - Válvulas en línea con conectores
-export const initialEdges = [
-  // Desde tanques izquierda al conector de entrada
-  {
-    id: 'e1',
-    source: 'tanque-izq-1',
-    target: 'conector-entrada',
-    sourceHandle: 'salida',
-    targetHandle: 'bottom',
-    type: 'step',
-  },
-  {
-    id: 'e2',
-    source: 'tanque-izq-2',
-    target: 'conector-entrada',
-    sourceHandle: 'salida',
-    targetHandle: 'bottom',
-    type: 'step',
-  },
-
-  // Desde conector de entrada al sensor pre-v1
-  {
-    id: 'e3',
-    source: 'conector-entrada',
-    target: 'sensor-pre-v1',
-    sourceHandle: 'right-out',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-
-  // Flujo en línea: sensor → válvula1 → sensor → válvula2 → sensor
-  {
-    id: 'e4',
-    source: 'sensor-pre-v1',
-    target: 'valvula-1',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e5',
-    source: 'valvula-1',
-    target: 'sensor-post-v1',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e6',
-    source: 'sensor-post-v1',
-    target: 'toma-1',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e7',
-    source: 'toma-1',
-    target: 'sensor-pre-v2',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e8',
-    source: 'sensor-pre-v2',
-    target: 'valvula-2',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e9',
-    source: 'valvula-2',
-    target: 'sensor-post-v2',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-
-  // Desde sensor post-v2 hacia toma-2
-  {
-    id: 'e10',
-    source: 'sensor-post-v2',
-    target: 'toma-2',
-    sourceHandle: 'salida',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-
-  // Desde toma-2 hacia conector de salida
-  {
-    id: 'e11',
-    source: 'toma-2',
-    target: 'conector-salida',
-    sourceHandle: 'salida',
-    targetHandle: 'left',
-    type: 'step',
-  },
-
-  // Desde conector de salida hacia tanques derecha
-  {
-    id: 'e12',
-    source: 'conector-salida',
-    target: 'tanque-der-1',
-    sourceHandle: 'bottom-out',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-  {
-    id: 'e13',
-    source: 'conector-salida',
-    target: 'tanque-der-2',
-    sourceHandle: 'bottom-out',
-    targetHandle: 'entrada',
-    type: 'step',
-  },
-]; 
+// Ya no se necesitan edges/conexiones visuales

@@ -1,22 +1,13 @@
-import React from 'react';
-import { AlertTriangle, Droplets, X } from 'lucide-react';
+import { AlertTriangle, Droplets } from 'lucide-react';
 
-const AlertaTomas = ({ tomasActivas, onClose }) => {
+const AlertaTomas = ({ tomasActivas }) => {
   if (!tomasActivas || tomasActivas.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-4 z-50 bg-red-50 border-2 border-red-500 rounded-lg p-4 shadow-lg max-w-sm">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="text-red-600 w-5 h-5" />
-          <h3 className="text-red-700 font-bold text-sm">¡TOMAS CLANDESTINAS DETECTADAS!</h3>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-red-500 hover:text-red-700 p-1"
-        >
-          <X className="w-4 h-4" />
-        </button>
+    <div className="fixed top-4 left-4 z-50 bg-red-50 border-2 border-red-500 rounded p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="text-red-600 w-5 h-5" />
+        <h3 className="text-red-700 font-bold text-sm">¡FUGAS DETECTADAS!</h3>
       </div>
 
       <div className="space-y-2">

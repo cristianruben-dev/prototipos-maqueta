@@ -37,30 +37,7 @@ class Valvula:
             self.presion = max(0.0, min(0.5, random.uniform(0.0, 0.5)))
 
 
-@dataclass
-class TomaClandestina:
-    id: int
-    estado: bool
-    flujo: float = 0.0
-    flujo_max: float = 3.0  # Máximo flujo de fuga
-
-    def calcular_flujo(self, presion_entrada: float) -> float:
-        """Calcula el flujo de fuga basado en la presión disponible"""
-        if not self.estado:
-            return 0.0
-
-        # Flujo proporcional a la presión disponible con curva más realista
-        if presion_entrada <= 0:
-            return 0.0
-        elif presion_entrada < 5.0:
-            # Presión baja: flujo mínimo
-            return min(0.5, presion_entrada * 0.1)
-        elif presion_entrada < 15.0:
-            # Presión media: flujo proporcional
-            return min(self.flujo_max * 0.6, presion_entrada * 0.15)
-        else:
-            # Presión alta: flujo máximo
-            return min(self.flujo_max, presion_entrada * 0.2)
+# Tomas clandestinas removidas - solo se simularán alertas visuales
 
 
 @dataclass
@@ -99,6 +76,18 @@ class SistemaSimulacion:
             2: Valvula(
                 2, 3.0, False
             ),  # Válvula 2: controla flujo independiente hacia tanques derecha
+            3: Valvula(
+                3, 2.0, False
+            ),  # Válvula 3: entrada tanque izquierdo 1
+            4: Valvula(
+                4, 2.0, False
+            ),  # Válvula 4: entrada tanque izquierdo 2
+            5: Valvula(
+                5, 2.0, False
+            ),  # Válvula 5: entrada tanque derecho 1
+            6: Valvula(
+                6, 2.0, False
+            ),  # Válvula 6: entrada tanque derecho 2
         }
 
         self.tanques = {
@@ -124,11 +113,7 @@ class SistemaSimulacion:
             "sensor_post_v2": {"presion": 0.0},
         }
 
-        # Tomas clandestinas - empiezan cerradas
-        self.tomas = {
-            1: TomaClandestina(1, False),  # Después de sensor post-v1
-            2: TomaClandestina(2, False),  # Después de sensor post-v2
-        }
+        # Tomas clandestinas removidas - solo alertas simuladas
 
         self.flujo_base = 5.0
 
@@ -155,113 +140,99 @@ class SistemaSimulacion:
             nivel_promedio_izq * 50
         )  # Sin presión adicional de fuente externa
 
-        # **NUEVA LÓGICA EN SERIE: Ambas válvulas deben estar abiertas para el flujo**
-        valvulas_en_serie_abiertas = self.valvulas[1].estado and self.valvulas[2].estado
+        # **LÓGICA CORREGIDA: Verificar válvulas de tanques también**
+        # Válvulas principales (1 y 2) deben estar abiertas
+        valvulas_principales_abiertas = self.valvulas[1].estado and self.valvulas[2].estado
+        
+        # Verificar válvulas de salida de tanques izquierdos (3 y 4)
+        puede_salir_izq1 = self.valvulas[3].estado and izq1.nivel_actual > 5
+        puede_salir_izq2 = self.valvulas[4].estado and izq2.nivel_actual > 5
+        hay_salida_disponible = puede_salir_izq1 or puede_salir_izq2
+        
+        # Verificar válvulas de entrada de tanques derechos (5 y 6)
+        puede_entrar_der1 = self.valvulas[5].estado
+        puede_entrar_der2 = self.valvulas[6].estado
+        hay_entrada_disponible = puede_entrar_der1 or puede_entrar_der2
 
         flujos = {"flujo_v1": 0.0, "flujo_v2": 0.0, "flujo_total": 0.0}
 
-        # Solo hay flujo si AMBAS válvulas están abiertas
-        if valvulas_en_serie_abiertas and (
-            izq1.nivel_actual > 5 or izq2.nivel_actual > 5
-        ):
-            # Verificar espacio en tanques destino
-            espacio_der1 = der1.capacidad - der1.nivel_actual
-            espacio_der2 = der2.capacidad - der2.nivel_actual
+        # Solo hay flujo si TODAS las condiciones se cumplen:
+        # 1. Válvulas principales abiertas (1 y 2)
+        # 2. Al menos una válvula de salida de tanques izquierdos abierta (3 o 4)
+        # 3. Al menos una válvula de entrada de tanques derechos abierta (5 o 6)
+        # 4. Hay líquido disponible en tanques de origen
+        if (valvulas_principales_abiertas and 
+            hay_salida_disponible and 
+            hay_entrada_disponible):
+            # Calcular espacio disponible SOLO en tanques con válvulas de entrada abiertas
+            espacio_der1 = (der1.capacidad - der1.nivel_actual) if puede_entrar_der1 else 0
+            espacio_der2 = (der2.capacidad - der2.nivel_actual) if puede_entrar_der2 else 0
             espacio_total = espacio_der1 + espacio_der2
 
             if espacio_total > 1.0:
-                # Calcular flujo disponible desde tanques izquierda
-                flujo_base_disponible = (
-                    self.flujo_base * 1.2
-                )  # Incrementado para mejor flujo
-                flujo_total = min(
-                    flujo_base_disponible * nivel_promedio_izq + 2.0,
-                    espacio_total / 2.0,
-                )
-
-                if flujo_total > 0:
-                    # Distribuir flujo proporcionalmente según espacio disponible
-                    proporcion_der1 = (
-                        espacio_der1 / espacio_total if espacio_total > 0 else 0.5
-                    )
-                    proporcion_der2 = (
-                        espacio_der2 / espacio_total if espacio_total > 0 else 0.5
+                # Calcular flujo disponible SOLO desde tanques con válvulas de salida abiertas
+                liquido_disponible_izq1 = max(0, izq1.nivel_actual - 2) if puede_salir_izq1 else 0
+                liquido_disponible_izq2 = max(0, izq2.nivel_actual - 2) if puede_salir_izq2 else 0
+                total_liquido_disponible = liquido_disponible_izq1 + liquido_disponible_izq2
+                
+                if total_liquido_disponible > 0:
+                    # Calcular flujo base
+                    nivel_promedio_disponible = total_liquido_disponible / 1000  # Normalizar
+                    flujo_base_disponible = self.flujo_base * 1.2
+                    flujo_total = min(
+                        flujo_base_disponible * nivel_promedio_disponible + 2.0,
+                        espacio_total / 2.0,
+                        total_liquido_disponible / 2.0  # No puede sacar más de lo disponible
                     )
 
-                    flujo_a_der1 = flujo_total * proporcion_der1
-                    flujo_a_der2 = flujo_total * proporcion_der2
+                    if flujo_total > 0:
+                        # Distribuir flujo SOLO a tanques con válvulas de entrada abiertas
+                        if espacio_total > 0:
+                            proporcion_der1 = espacio_der1 / espacio_total
+                            proporcion_der2 = espacio_der2 / espacio_total
+                        else:
+                            proporcion_der1 = 0
+                            proporcion_der2 = 0
 
-                    # Distribuir salida de tanques izquierda proporcionalmente según disponibilidad
-                    total_disponible = max(0, izq1.nivel_actual - 2) + max(
-                        0, izq2.nivel_actual - 2
-                    )
-                    if total_disponible > 0:
-                        proporcion_izq1 = (
-                            max(0, izq1.nivel_actual - 2) / total_disponible
-                        )
-                        proporcion_izq2 = (
-                            max(0, izq2.nivel_actual - 2) / total_disponible
-                        )
-                    else:
-                        proporcion_izq1 = 0.5
-                        proporcion_izq2 = 0.5
+                        flujo_a_der1 = flujo_total * proporcion_der1
+                        flujo_a_der2 = flujo_total * proporcion_der2
 
-                    salida_izq1 = flujo_total * proporcion_izq1
-                    salida_izq2 = flujo_total * proporcion_izq2
+                        # Distribuir salida SOLO desde tanques con válvulas de salida abiertas
+                        if total_liquido_disponible > 0:
+                            proporcion_izq1 = liquido_disponible_izq1 / total_liquido_disponible
+                            proporcion_izq2 = liquido_disponible_izq2 / total_liquido_disponible
+                        else:
+                            proporcion_izq1 = 0
+                            proporcion_izq2 = 0
 
-                    # Actualizar flujos
-                    izq1.flujo_salida += salida_izq1
-                    izq2.flujo_salida += salida_izq2
-                    der1.flujo_entrada += flujo_a_der1
-                    der2.flujo_entrada += flujo_a_der2
+                        salida_izq1 = flujo_total * proporcion_izq1
+                        salida_izq2 = flujo_total * proporcion_izq2
 
-                    flujos["flujo_total"] = flujo_total
+                        # Actualizar flujos SOLO si las válvulas correspondientes están abiertas
+                        if puede_salir_izq1:
+                            izq1.flujo_salida += salida_izq1
+                        if puede_salir_izq2:
+                            izq2.flujo_salida += salida_izq2
+                        if puede_entrar_der1:
+                            der1.flujo_entrada += flujo_a_der1
+                        if puede_entrar_der2:
+                            der2.flujo_entrada += flujo_a_der2
+
+                        flujos["flujo_total"] = flujo_total
 
             # Calcular presiones del sistema paso a paso
             presion_pre_v1 = presion_base_tuberia + random.uniform(-2, 2)
             presion_post_v1 = presion_base_tuberia * 0.85 + random.uniform(-1, 1)
 
-            # Toma 1: después del sensor post-v1
-            flujo_toma1 = self.tomas[1].calcular_flujo(presion_post_v1)
-            self.tomas[1].flujo = flujo_toma1
-
-            # Pérdida de presión por toma 1 - afecta presión antes de V2
-            perdida_presion_toma1 = flujo_toma1 * 3.5  # Factor de pérdida aumentado
+            # Calcular presión antes de V2
             presion_pre_v2 = max(
                 0,
                 presion_base_tuberia * 0.7
-                - perdida_presion_toma1
                 + random.uniform(-1.5, 1.5),
             )
 
-            # Presión después de V2 - afectada por pérdida de toma 1
+            # Presión después de V2
             presion_post_v2 = max(0, presion_pre_v2 * 0.9 + random.uniform(-1, 1))
-
-            # Toma 2: después del sensor post-v2
-            flujo_toma2 = self.tomas[2].calcular_flujo(presion_post_v2)
-            self.tomas[2].flujo = flujo_toma2
-
-            # Pérdida de presión por toma 2 - afecta flujo hacia tanques
-            perdida_presion_toma2 = flujo_toma2 * 2.5
-
-            # Reducir flujo hacia tanques si hay fugas
-            factor_reduccion_flujo = 1.0 - (flujo_toma1 + flujo_toma2) / 10.0
-            factor_reduccion_flujo = max(
-                0.5, factor_reduccion_flujo
-            )  # Mínimo 50% del flujo
-
-            # Aplicar reducción de flujo por tomas clandestinas
-            flujo_total *= factor_reduccion_flujo
-
-            # Recalcular flujos con reducción
-            if flujo_total > 0:
-                flujo_a_der1 = flujo_total * proporcion_der1
-                flujo_a_der2 = flujo_total * proporcion_der2
-
-                # Actualizar flujos reducidos
-                der1.flujo_entrada = flujo_a_der1
-                der2.flujo_entrada = flujo_a_der2
-                flujos["flujo_total"] = flujo_total
 
             # Actualizar presiones en sensores - CON FLUJO (ambas válvulas abiertas)
             self.sensores["sensor_pre_v1"]["presion"] = presion_pre_v1
@@ -271,25 +242,7 @@ class SistemaSimulacion:
         else:
             # SIN FLUJO - Al menos una válvula está cerrada o no hay suficiente líquido
 
-            # Tomas clandestinas con presión residual - pueden funcionar con presión limitada
-            presion_residual_post_v1 = (
-                presion_base_tuberia * 0.3 if self.valvulas[1].estado else 0.0
-            )
-            presion_residual_post_v2 = (
-                presion_base_tuberia * 0.15
-                if (self.valvulas[1].estado and self.valvulas[2].estado)
-                else 0.0
-            )
-
-            flujo_toma1_residual = self.tomas[1].calcular_flujo(
-                presion_residual_post_v1
-            )
-            flujo_toma2_residual = self.tomas[2].calcular_flujo(
-                presion_residual_post_v2
-            )
-
-            self.tomas[1].flujo = flujo_toma1_residual
-            self.tomas[2].flujo = flujo_toma2_residual
+            # Sin cálculo de tomas clandestinas - solo alertas visuales
 
             # Presiones cuando no hay flujo completo - COMPORTAMIENTO FÍSICAMENTE CORRECTO
             if self.valvulas[1].estado:
@@ -354,18 +307,10 @@ class SistemaSimulacion:
             print(f"🔧 Válvula {valvula_id} {'ABIERTA' if nuevo_estado else 'CERRADA'}")
         else:
             print(
-                f"⚠️  ID de válvula inválido: {valvula_id} (solo válvulas 1 y 2 disponibles)"
+                f"⚠️  ID de válvula inválido: {valvula_id} (válvulas disponibles: 1-6)"
             )
 
-    def cambiar_toma_clandestina(self, toma_id: int, nuevo_estado: bool):
-        """Cambia el estado de una toma clandestina"""
-        if toma_id in self.tomas:
-            self.tomas[toma_id].estado = nuevo_estado
-            print(
-                f"🚰 Toma clandestina {toma_id} {'ABIERTA' if nuevo_estado else 'CERRADA'}"
-            )
-        else:
-            print(f"⚠️  ID de toma inválido: {toma_id} (solo tomas 1 y 2 disponibles)")
+    # Método cambiar_toma_clandestina removido - solo alertas simuladas
 
     def get_datos_mqtt(self, flujos: Dict[str, float]) -> Dict[str, Any]:
         """Genera los datos para enviar por MQTT en el nuevo formato"""
@@ -375,29 +320,36 @@ class SistemaSimulacion:
             "tanque_izq_2": round(self.tanques["tanque_izq_2"].nivel_actual, 1),
             "tanque_der_1": round(self.tanques["tanque_der_1"].nivel_actual, 1),
             "tanque_der_2": round(self.tanques["tanque_der_2"].nivel_actual, 1),
-            # Válvulas - presión interna y estado
+            # Válvulas principales - presión interna y estado
             "valvula1_presion_interna": round(self.valvulas[1].presion, 1),
             "valvula1_estado": self.valvulas[1].estado,
             "valvula2_presion_interna": round(self.valvulas[2].presion, 1),
             "valvula2_estado": self.valvulas[2].estado,
+            # Válvulas de tanques - estado
+            "valvula_tanque_izq_1_estado": self.valvulas[3].estado,
+            "valvula_tanque_izq_1_presion": round(self.valvulas[3].presion, 1),
+            "valvula_tanque_izq_2_estado": self.valvulas[4].estado,
+            "valvula_tanque_izq_2_presion": round(self.valvulas[4].presion, 1),
+            "valvula_tanque_der_1_estado": self.valvulas[5].estado,
+            "valvula_tanque_der_1_presion": round(self.valvulas[5].presion, 1),
+            "valvula_tanque_der_2_estado": self.valvulas[6].estado,
+            "valvula_tanque_der_2_presion": round(self.valvulas[6].presion, 1),
             # Sensores de presión independientes
             "sensor_pre_v1": round(self.sensores["sensor_pre_v1"]["presion"], 1),
             "sensor_post_v1": round(self.sensores["sensor_post_v1"]["presion"], 1),
             "sensor_pre_v2": round(self.sensores["sensor_pre_v2"]["presion"], 1),
             "sensor_post_v2": round(self.sensores["sensor_post_v2"]["presion"], 1),
-            # Tomas clandestinas
-            "toma1_estado": self.tomas[1].estado,
-            "toma1_flujo": round(self.tomas[1].flujo, 1),
-            "toma2_estado": self.tomas[2].estado,
-            "toma2_flujo": round(self.tomas[2].flujo, 1),
+            # Tomas clandestinas removidas - solo alertas simuladas
+            "toma1_estado": False,
+            "toma1_flujo": 0.0,
+            "toma2_estado": False,
+            "toma2_flujo": 0.0,
             # Información del sistema
             "sistema_activo": any(v.estado for v in self.valvulas.values()),
             "flujos": flujos,
             "flujo_total": round(sum(flujos.values()), 2),
-            # Detección de tomas clandestinas
-            "tomas_detectadas": any(
-                t.estado and t.flujo > 0 for t in self.tomas.values()
-            ),
+            # Detección de tomas clandestinas - siempre falso
+            "tomas_detectadas": False,
         }
 
 
@@ -422,15 +374,27 @@ class MQTTManager:
         try:
             comando = json.loads(msg.payload.decode())
             print(f"📨 Comando recibido: {comando}")
+            
+            # Formato nuevo: {"tipo": "valvula", "id": 1, "estado": true}
             if comando.get("tipo") == "valvula":
                 valvula_id = comando.get("id")
                 estado = comando.get("estado")
                 self.sistema.cambiar_valvula(valvula_id, estado)
-            elif comando.get("tipo") == "toma_clandestina":
-                toma_id = comando.get("id")
-                estado = comando.get("estado")
-                print(f"🚰 Procesando toma {toma_id} -> {estado}")
-                self.sistema.cambiar_toma_clandestina(toma_id, estado)
+            
+            # Formato legacy: {"comando": "valvula1", "valor": true}
+            elif comando.get("comando") in ["valvula1", "valvula2", "valvula3", "valvula4", "valvula5", "valvula6"]:
+                valvula_num = int(comando.get("comando").replace("valvula", ""))
+                self.sistema.cambiar_valvula(valvula_num, comando.get("valor"))
+            
+            # Comando de pausa
+            elif comando.get("comando") == "pausar":
+                self.sistema.pausado = comando.get("valor")
+                print(f"🔄 Sistema {'PAUSADO' if comando.get('valor') else 'REANUDADO'}")
+            
+            # Comandos de tomas clandestinas removidos - solo alertas visuales simuladas
+            else:
+                print(f"⚠️  Comando desconocido: {comando}")
+                
         except Exception as e:
             print(f"❌ Error procesando comando: {e}")
 
@@ -520,38 +484,7 @@ def main():
                 f"   Sensores: Pre-V1={datos['sensor_pre_v1']:.1f}kPa, Post-V1={datos['sensor_post_v1']:.1f}kPa | Pre-V2={datos['sensor_pre_v2']:.1f}kPa, Post-V2={datos['sensor_post_v2']:.1f}kPa"
             )
 
-            # Información de tomas clandestinas
-            toma1_estado = (
-                "🔴"
-                if not datos["toma1_estado"]
-                else f"🚰({datos['toma1_flujo']:.1f}L/s)"
-            )
-            toma2_estado = (
-                "🔴"
-                if not datos["toma2_estado"]
-                else f"🚰({datos['toma2_flujo']:.1f}L/s)"
-            )
-
-            print(f"   Tomas: T1={toma1_estado} | T2={toma2_estado}")
-
-            # Alerta de tomas detectadas con detalles
-            if datos["tomas_detectadas"]:
-                alertas = []
-                if datos["toma1_estado"] and datos["toma1_flujo"] > 0:
-                    alertas.append(f"T1({datos['toma1_flujo']:.1f}L/s)")
-                if datos["toma2_estado"] and datos["toma2_flujo"] > 0:
-                    alertas.append(f"T2({datos['toma2_flujo']:.1f}L/s)")
-                print(f"   ⚠️  ALERTA: Tomas activas: {', '.join(alertas)}")
-
-                # Mostrar impacto en presiones
-                if datos["toma1_flujo"] > 0:
-                    print(
-                        f"   📉 Toma 1 causa pérdida de presión en Pre-V2: -{datos['toma1_flujo'] * 3.5:.1f}kPa"
-                    )
-                if datos["toma2_flujo"] > 0:
-                    print(
-                        f"   📉 Toma 2 reduce flujo a tanques: -{datos['toma2_flujo'] * 25:.0f}%"
-                    )
+            # Información de tomas clandestinas removida
 
             time.sleep(2)
 
