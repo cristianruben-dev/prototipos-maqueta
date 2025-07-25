@@ -16,6 +16,7 @@ import { MinusIcon } from 'lucide-react';
 import { RefreshCcwDotIcon } from 'lucide-react';
 import { Button } from './components/ui/button';
 import useFugaStore from './stores/fugaStore';
+import scadaImage from './assets/scada.png';
 
 const nodeComponents = {
   tanque: Tanque,
@@ -379,7 +380,7 @@ function AppContent() {
           <div
             className="absolute inset-0"
             style={{
-              backgroundImage: 'url("/src/assets/scada.png")',
+              backgroundImage: `url(${scadaImage})`,
               backgroundSize: '70%',
               backgroundRepeat: 'no-repeat',
               backgroundPosition: 'center top 50px left 40px'
