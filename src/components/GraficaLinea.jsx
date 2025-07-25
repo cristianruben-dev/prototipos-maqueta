@@ -7,9 +7,9 @@ const GraficaLinea = memo(function GraficaLinea({
   titulo,
   color = "#8884d8",
   dataKey = "presion",
-  unidad = "kPa",
+  unidad = "PSI",
   domainMin = 0,
-  domainMax = 100,
+  domainMax = 7, // Reducido a 7 PSI para mejor visualización de cambios
   etiqueta = "Valor"
 }) {
   if (!datos || datos.length === 0) {
@@ -50,7 +50,8 @@ const GraficaLinea = memo(function GraficaLinea({
                 dataKey="time"
                 tick={{ fontSize: 9 }}
                 interval="preserveStartEnd"
-                tickCount={3}
+                tickCount={2}
+                domain={['dataMin', 'dataMax']}
               />
               <YAxis
                 domain={[domainMin, domainMax]}
@@ -68,7 +69,11 @@ const GraficaLinea = memo(function GraficaLinea({
                 }}
                 labelStyle={{ fontSize: '10px' }}
                 itemStyle={{ fontSize: '10px', padding: 0, margin: 0 }}
-                formatter={(value) => [`${value} ${unidad}`, etiqueta]}
+                formatter={(value) => {
+                  // Los datos ya vienen convertidos a PSI desde App.jsx
+                  const valorMostrar = typeof value === 'number' ? value.toFixed(1) : value;
+                  return [`${valorMostrar} ${unidad}`, etiqueta];
+                }}
               />
               <Area
                 type="monotone"
@@ -85,4 +90,4 @@ const GraficaLinea = memo(function GraficaLinea({
   );
 });
 
-export { GraficaLinea }; 
+export { GraficaLinea };

@@ -1,6 +1,7 @@
+import React from 'react';
 import { Badge } from "@/components/ui/badge";
 
-export function Tanque({ litros, capacidad = 1000 }) {
+export const Tanque = React.memo(function Tanque({ litros, capacidad = 1000 }) {
   const porcentaje = Math.min(100, (litros / capacidad) * 100);
 
   return (
@@ -27,4 +28,4 @@ export function Tanque({ litros, capacidad = 1000 }) {
       </div>
     </div>
   );
-}
+});

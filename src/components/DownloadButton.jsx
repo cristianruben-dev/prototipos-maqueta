@@ -9,8 +9,8 @@ export function DownloadButton({ historia, sessionStartTime, onLimpiarHistorial,
   const formatearSerie = (serie, tipo) =>
     serie?.map(item => ({
       timestamp: new Date(item.time).toISOString(),
-      [tipo]: item.value,
-      unidad: "kPa"
+      [tipo]: typeof item.value === 'number' ? item.value.toFixed(2) : item.value, // Los datos ya vienen en PSI
+      unidad: "PSI"
     })) || [];
 
   const formatearDatos = () => {
@@ -131,4 +131,4 @@ export function DownloadButton({ historia, sessionStartTime, onLimpiarHistorial,
       </div>
     </div>
   );
-} 
+}

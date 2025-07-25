@@ -114,8 +114,12 @@ class SistemaSimulacion:
         }
 
         # Tomas clandestinas removidas - solo alertas simuladas
+        
+        # Variables para simulación de fuga
+        self.simulando_fuga = False
+        self.fuga_intensidad = 0.0
 
-        self.flujo_base = 5.0
+        self.flujo_base = 3.0  # Reducir velocidad del flujo
 
     def calcular_flujos(self):
         """Calcula los flujos del nuevo sistema EN SERIE - ambas válvulas deben estar abiertas"""
@@ -137,8 +141,8 @@ class SistemaSimulacion:
             izq1.nivel_actual + izq2.nivel_actual
         ) / 2000  # Normalizar
         presion_base_tuberia = (
-            nivel_promedio_izq * 50
-        )  # Sin presión adicional de fuente externa
+            nivel_promedio_izq * 120 + 30
+        )  # Aumentar presión base para mejor visibilidad en PSI
 
         # **LÓGICA CORREGIDA: Verificar válvulas de tanques también**
         # Válvulas principales (1 y 2) deben estar abiertas
@@ -220,20 +224,22 @@ class SistemaSimulacion:
 
                         flujos["flujo_total"] = flujo_total
 
-            # Calcular presiones del sistema paso a paso
+            # Calcular presiones del sistema - SIN FUGA las presiones son similares
             presion_pre_v1 = presion_base_tuberia + random.uniform(-2, 2)
-            presion_post_v1 = presion_base_tuberia * 0.85 + random.uniform(-1, 1)
+            presion_post_v1 = presion_pre_v1 * 0.98 + random.uniform(-0.5, 0.5)  # Pérdida mínima sin fuga
 
-            # Calcular presión antes de V2
-            presion_pre_v2 = max(
-                0,
-                presion_base_tuberia * 0.7
-                + random.uniform(-1.5, 1.5),
-            )
+            # Calcular presión antes de V2 - similar a post-v1 sin fuga
+            presion_pre_v2 = presion_post_v1 * 0.98 + random.uniform(-0.5, 0.5)
 
-            # Presión después de V2
-            presion_post_v2 = max(0, presion_pre_v2 * 0.9 + random.uniform(-1, 1))
+            # Presión después de V2 - similar a pre-v2 sin fuga
+            presion_post_v2 = presion_pre_v2 * 0.98 + random.uniform(-0.5, 0.5)
 
+            # Aplicar efectos de fuga SOLO si está activa
+            if self.simulando_fuga:
+                # Reducir pre-v2 y post-v2 aproximadamente a la mitad
+                presion_pre_v2 = presion_pre_v2 * 0.5    # Reducir a la mitad
+                presion_post_v2 = presion_post_v2 * 0.5  # Reducir a la mitad
+            
             # Actualizar presiones en sensores - CON FLUJO (ambas válvulas abiertas)
             self.sensores["sensor_pre_v1"]["presion"] = presion_pre_v1
             self.sensores["sensor_post_v1"]["presion"] = presion_post_v1
@@ -309,6 +315,18 @@ class SistemaSimulacion:
             print(
                 f"⚠️  ID de válvula inválido: {valvula_id} (válvulas disponibles: 1-6)"
             )
+    
+    def simular_fuga(self, intensidad: float = 5.0):
+        """Simula una fuga en el tramo entre post-v1 y pre-v2"""
+        self.simulando_fuga = True
+        self.fuga_intensidad = intensidad
+        print(f"💧 Simulando fuga con intensidad {intensidad}")
+    
+    def detener_fuga(self):
+        """Detiene la simulación de fuga"""
+        self.simulando_fuga = False
+        self.fuga_intensidad = 0.0
+        print("✅ Fuga detenida")
 
     # Método cambiar_toma_clandestina removido - solo alertas simuladas
 
@@ -390,6 +408,14 @@ class MQTTManager:
             elif comando.get("comando") == "pausar":
                 self.sistema.pausado = comando.get("valor")
                 print(f"🔄 Sistema {'PAUSADO' if comando.get('valor') else 'REANUDADO'}")
+            
+            # Comandos de fuga
+            elif comando.get("comando") == "simular_fuga":
+                intensidad = comando.get("intensidad", 5.0)
+                self.sistema.simular_fuga(intensidad)
+            
+            elif comando.get("comando") == "detener_fuga":
+                self.sistema.detener_fuga()
             
             # Comandos de tomas clandestinas removidos - solo alertas visuales simuladas
             else:

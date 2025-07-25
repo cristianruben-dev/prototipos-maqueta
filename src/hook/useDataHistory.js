@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-export function useDataHistory(maxMinutes = 15) {
+export function useDataHistory(maxMinutes = 1) {
   const [historia, setHistoria] = useState({
     sensor_pre_v1: [],
     sensor_post_v1: [],
@@ -51,7 +51,7 @@ export function useDataHistory(maxMinutes = 15) {
 
   // Helper para actualizar una serie de datos - MEMOIZADO
   const actualizarSerie = useCallback((seriePrev, nuevoValor) => {
-    const maxPuntos = 2000;
+    const maxPuntos = 200; // Reducir puntos para gráficas más rápidas
     const maxTiempo = maxMinutes * 60 * 1000;
     const timestamp = Date.now();
     const tiempoLimite = timestamp - maxTiempo;
@@ -72,8 +72,18 @@ export function useDataHistory(maxMinutes = 15) {
       // Actualizar solo sensores
       if (datosEntrada.sensores) {
         datosEntrada.sensores.forEach(sensor => {
+          let presionFinal = sensor.presion || 0;
+          
+          // Aplicar efecto de fuga visual si está activa
+          const fugaActiva = window.fugaGlobal?.activa === true;
+          if (fugaActiva && (sensor.id === 'sensor_pre_v2' || sensor.id === 'sensor_post_v2')) {
+            console.log('🔴 Aplicando efecto visual de fuga en gráfica:', sensor.id, 'presión original:', presionFinal);
+            presionFinal = presionFinal * 0.5; // Reducir a la mitad para efecto visual
+            console.log('🔴 Presión con efecto de fuga:', presionFinal);
+          }
+          
           if (nuevaHistoria[sensor.id]) {
-            nuevaHistoria[sensor.id] = actualizarSerie(nuevaHistoria[sensor.id], sensor.presion || 0);
+            nuevaHistoria[sensor.id] = actualizarSerie(nuevaHistoria[sensor.id], presionFinal);
           }
         });
       }

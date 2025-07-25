@@ -1,31 +1,39 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useDataHistory } from './hook/useDataHistory';
-import { useMQTT } from './hook/useMQTT';
+import useSimulator from './hook/useSimulator';
 import { Tanque } from './components/tanque';
 import { Valvula } from './components/valvula';
 import { Sensor } from './components/sensor';
+import Fuga from './components/fuga';
 import { GraficasPanel } from './components/GraficasPanel';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { initialNodes } from './config/nodePositions';
 import AlertaTomas from './components/AlertaTomas';
+import FugaOverlay from './components/FugaOverlay';
 import ValvulasPanel from './components/ValvulasPanel';
 import { PlusIcon } from 'lucide-react';
 import { MinusIcon } from 'lucide-react';
 import { RefreshCcwDotIcon } from 'lucide-react';
 import { Button } from './components/ui/button';
+import useFugaStore from './stores/fugaStore';
 
 const nodeComponents = {
   tanque: Tanque,
   valvula: Valvula,
   sensor: Sensor,
+  fuga: Fuga,
 };
 
-export default function App() {
+// Componente interno que usa el contexto de fuga
+function AppContent() {
   const [nodes, setNodes] = useState(initialNodes);
   const [lastDataTime, setLastDataTime] = useState(null);
   const [tomasActivas, setTomasActivas] = useState([]);
   const [showAlerta, setShowAlerta] = useState(false);
-  const [simulandoFuga, setSimulandoFuga] = useState(false);
+  const [showFugaOverlay, setShowFugaOverlay] = useState(false);
+  
+  // Usar el store de fuga
+  const { fugaActiva, activarFuga, desactivarFuga, toggleFuga } = useFugaStore();
   const [imageScale, setImageScale] = useState(1);
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -33,7 +41,7 @@ export default function App() {
   const [highlightedValvula, setHighlightedValvula] = useState(null);
 
   const { historia, agregarDatos, getDatosGrafico, sessionStartTime, limpiarHistorial } = useDataHistory(60);
-  const { data, connected, sendCommand } = useMQTT("ws://localhost:9001", "tanques/datos");
+  const { isConnected: connected, data: mqttData, sendCommand } = useSimulator();
 
   // Usar getDatosGrafico directamente ya que está memoizado en el hook
   const datosGrafico = getDatosGrafico;
@@ -47,26 +55,80 @@ export default function App() {
     };
 
     if (sendCommand) {
-      sendCommand('tanques/comandos', comando);
+      sendCommand(comando);
     }
   }, [sendCommand]);
 
-  // Función para simular alertas de fuga
+  // Función para simular alertas de fuga usando el contexto
   const handleSimularFuga = useCallback(() => {
-    setSimulandoFuga(prev => !prev);
-    if (!simulandoFuga) {
-      // Simular alertas de fuga
-      setTomasActivas([
-        { nombre: 'Posible Fuga Detectada - Zona 1', flujo: 1.2 },
-        { nombre: 'Posible Fuga Detectada - Zona 2', flujo: 0.8 }
-      ]);
-      setShowAlerta(true);
+    if (!fugaActiva) {
+      // Activar fuga
+      activarFuga();
+      
+      // Configurar información de la fuga (solo un tramo)
+      const fugaData = {
+        nombre: 'Fuga Detectada - Tramo Principal',
+        flujo: 2.5,
+        intensidad: 'ALTA',
+        zona: 'Sistema Principal'
+      };
+
+      setShowFugaOverlay(true);
+
+      // Configurar alerta pequeña para después del overlay
+      setTomasActivas([fugaData]);
+
+      // Hacer visible el nodo de fuga
+      setNodes(prevNodes =>
+        prevNodes.map(node =>
+          node.id === 'indicador-fuga'
+            ? { ...node, data: { ...node.data, visible: true } }
+            : node
+        )
+      );
     } else {
+      // Desactivar fuga
+      desactivarFuga();
+      
       // Limpiar alertas
       setTomasActivas([]);
       setShowAlerta(false);
+      setShowFugaOverlay(false);
+
+      // Ocultar el nodo de fuga
+      setNodes(prevNodes =>
+        prevNodes.map(node =>
+          node.id === 'indicador-fuga'
+            ? { ...node, data: { ...node.data, visible: false } }
+            : node
+        )
+      );
     }
-  }, [simulandoFuga]);
+  }, [fugaActiva, activarFuga, desactivarFuga]);
+
+  // Función para cerrar el overlay de fuga
+  const handleCloseFugaOverlay = useCallback(() => {
+    setShowFugaOverlay(false);
+    setShowAlerta(true); // Mostrar la alerta pequeña después de cerrar el overlay
+  }, []);
+
+  // Función para resetear la simulación
+  const handleResetSimulation = useCallback(() => {
+    // Limpiar las alertas de fuga usando el contexto
+    desactivarFuga();
+    setTomasActivas([]);
+    setShowAlerta(false);
+    setShowFugaOverlay(false);
+
+    // Ocultar el nodo de fuga
+    setNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === 'indicador-fuga'
+          ? { ...node, data: { ...node.data, visible: false } }
+          : node
+      )
+    );
+  }, [desactivarFuga]);
 
   // INICIALIZAR NODOS DE VÁLVULAS Y TOMAS CON onToggle desde el inicio
   useEffect(() => {
@@ -88,28 +150,30 @@ export default function App() {
     });
   }, [handleValvulaToggle]);
 
-  // Actualización de nodos para el nuevo sistema
+  // Actualización de nodos para el nuevo sistema (optimizado para histórico)
   useEffect(() => {
-    if (!data || !connected) return;
+    if (!mqttData || !connected) return;
 
     try {
-      const datos = JSON.parse(data);
+      // Los datos del simulador ya vienen como objeto, no necesitan parsing
+      const datos = mqttData;
 
       // Actualizar timestamp de últimos datos
       setLastDataTime(Date.now());
 
       // Preparar datos para histórico - ahora incluye válvulas y sensores
+      // Convertir presiones de kPa a PSI para las gráficas (1 kPa = 0.145038 PSI)
       const datosHistorico = {
         valvulas: [1, 2].map(id => ({
           id,
-          presion: datos[`valvula${id}_presion_interna`] || 0,
-          estado: datos[`valvula${id}_estado`] || false
+          presion: datos.valvulas?.[`v${id}`]?.presion_entrada || 0,
+          estado: datos.valvulas?.[`v${id}`]?.abierta || false
         })),
         sensores: [
-          { id: 'sensor_pre_v1', presion: datos['sensor_pre_v1'] || 0 },
-          { id: 'sensor_post_v1', presion: datos['sensor_post_v1'] || 0 },
-          { id: 'sensor_pre_v2', presion: datos['sensor_pre_v2'] || 0 },
-          { id: 'sensor_post_v2', presion: datos['sensor_post_v2'] || 0 },
+          { id: 'sensor_pre_v1', presion: (datos.sensores?.pre_v1 || 0) * 0.145038 },
+          { id: 'sensor_post_v1', presion: (datos.sensores?.post_v1 || 0) * 0.145038 },
+          { id: 'sensor_pre_v2', presion: (datos.sensores?.pre_v2 || 0) * 0.145038 },
+          { id: 'sensor_post_v2', presion: (datos.sensores?.post_v2 || 0) * 0.145038 },
         ]
       };
 
@@ -118,38 +182,89 @@ export default function App() {
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, agregarDatos]);
+  }, [mqttData, connected, agregarDatos]);
 
-  // Actualización de nodos para el nuevo sistema
+  // Actualización de nodos para el nuevo sistema (optimizado con threshold)
   useEffect(() => {
-    if (!data || !connected) return;
+    if (!mqttData || !connected) return;
 
     try {
-      const datos = JSON.parse(data);
+      // Los datos del simulador ya vienen como objeto
+      const datos = mqttData;
 
-
-
-      // Actualizar nodos de forma controlada
+      // Actualizar nodos de forma controlada con verificación de cambios
       setNodes((prevNodes) => {
-        return prevNodes.map((node) => {
+        let hasChanges = false;
+        const newNodes = prevNodes.map((node) => {
           // Actualizar tanques
-          if (node.data.litrosKey && datos[node.data.litrosKey] !== node.data.litros) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                litros: datos[node.data.litrosKey] || 0
-              }
-            };
+          if (node.data.litrosKey && node.type === 'tanque') {
+            let nuevosLitros = 0;
+
+            // Mapear las claves del simulador a las claves de los nodos
+            if (node.data.litrosKey === 'tanque_izq1_litros') {
+              nuevosLitros = datos.tanques?.izq1?.nivel || 0;
+            } else if (node.data.litrosKey === 'tanque_izq2_litros') {
+              nuevosLitros = datos.tanques?.izq2?.nivel || 0;
+            } else if (node.data.litrosKey === 'tanque_der1_litros') {
+              nuevosLitros = datos.tanques?.der1?.nivel || 0;
+            } else if (node.data.litrosKey === 'tanque_der2_litros') {
+              nuevosLitros = datos.tanques?.der2?.nivel || 0;
+            }
+
+            // Solo actualizar si hay cambios significativos (threshold de 1 litro)
+            if (Math.abs(nuevosLitros - (node.data.litros || 0)) > 1) {
+              hasChanges = true;
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  litros: nuevosLitros,
+                  porcentaje: (nuevosLitros / node.data.capacidad) * 100
+                }
+              };
+            }
           }
 
           // Actualizar válvulas (identificadas por presionKey Y estadoKey)
           if (node.data.presionKey && node.data.estadoKey && node.type === 'valvula') {
-            const nuevaPresion = datos[node.data.presionKey] || 0;
-            const nuevoEstado = datos[node.data.estadoKey] || false;
+            let nuevaPresion = 0;
+            let nuevoEstado = false;
 
-            // Actualizar si hay cambios o si falta onToggle
-            if (nuevaPresion !== node.data.presion || nuevoEstado !== node.data.estado || !node.data.onToggle) {
+            // Mapear las claves del simulador
+            if (node.data.presionKey === 'valvula1_presion_interna') {
+              nuevaPresion = datos.valvulas?.v1?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v1?.abierta || false;
+            } else if (node.data.presionKey === 'valvula2_presion_interna') {
+              nuevaPresion = datos.valvulas?.v2?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v2?.abierta || false;
+            } else if (node.data.presionKey === 'valvula_tanque_izq_1_presion') {
+              nuevaPresion = datos.valvulas?.v3?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v3?.abierta || false;
+            } else if (node.data.presionKey === 'valvula_tanque_izq_2_presion') {
+              nuevaPresion = datos.valvulas?.v4?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v4?.abierta || false;
+            } else if (node.data.presionKey === 'valvula_tanque_der_1_presion') {
+              nuevaPresion = datos.valvulas?.v5?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v5?.abierta || false;
+            } else if (node.data.presionKey === 'valvula_tanque_der_2_presion') {
+              nuevaPresion = datos.valvulas?.v6?.presion_entrada || 0;
+              nuevoEstado = datos.valvulas?.v6?.abierta || false;
+            }
+
+            // Aplicar efecto visual de fuga si está activa
+            const fugaActiva = window.fugaGlobal?.activa === true;
+            if (fugaActiva && (node.data.presionKey === 'valvula2_presion_interna' || node.data.presionKey === 'valvula1_presion_interna')) {
+              console.log('🔴 Aplicando efecto visual de fuga en válvula:', node.data.presionKey, 'presión original:', nuevaPresion);
+              nuevaPresion = nuevaPresion * 0.5; // Reducir a la mitad para efecto visual
+              console.log('🔴 Presión con efecto de fuga en válvula:', nuevaPresion);
+            }
+
+            // Actualizar si hay cambios significativos o si falta onToggle
+            const presionChanged = Math.abs((node.data.presion || 0) - nuevaPresion) > 0.1;
+            const estadoChanged = nuevoEstado !== node.data.estado;
+
+            if (presionChanged || estadoChanged || !node.data.onToggle) {
+              hasChanges = true;
               return {
                 ...node,
                 data: {
@@ -164,10 +279,30 @@ export default function App() {
 
           // Actualizar sensores de presión (solo presionKey, sin estadoKey)
           if (node.data.presionKey && !node.data.estadoKey && node.type === 'sensor') {
-            const nuevaPresion = datos[node.data.presionKey] || 0;
+            let nuevaPresion = 0;
 
-            // Solo actualizar si hay cambios
-            if (nuevaPresion !== node.data.presion) {
+            // Mapear las claves del simulador
+            if (node.data.presionKey === 'sensor_pre_v1') {
+              nuevaPresion = datos.sensores?.pre_v1 || 0;
+            } else if (node.data.presionKey === 'sensor_post_v1') {
+              nuevaPresion = datos.sensores?.post_v1 || 0;
+            } else if (node.data.presionKey === 'sensor_pre_v2') {
+              nuevaPresion = datos.sensores?.pre_v2 || 0;
+            } else if (node.data.presionKey === 'sensor_post_v2') {
+              nuevaPresion = datos.sensores?.post_v2 || 0;
+            }
+
+            // Aplicar efecto visual de fuga si está activa
+            const fugaActiva = window.fugaGlobal?.activa === true;
+            if (fugaActiva && (node.data.presionKey === 'sensor_pre_v2' || node.data.presionKey === 'sensor_post_v2')) {
+              console.log('🔴 Aplicando efecto visual de fuga en sensor:', node.data.presionKey, 'presión original:', nuevaPresion);
+              nuevaPresion = nuevaPresion * 0.5; // Reducir a la mitad para efecto visual
+              console.log('🔴 Presión con efecto de fuga en sensor:', nuevaPresion);
+            }
+
+            // Solo actualizar si hay cambios significativos (threshold de 0.1)
+            if (Math.abs((node.data.presion || 0) - nuevaPresion) > 0.1) {
+              hasChanges = true;
               return {
                 ...node,
                 data: {
@@ -178,40 +313,39 @@ export default function App() {
             }
           }
 
-          // Tomas clandestinas removidas
-
           return node;
         });
-      });
 
-      // Detección de tomas clandestinas removida - solo alertas simuladas
+        // Solo actualizar si realmente hay cambios
+        return hasChanges ? newNodes : prevNodes;
+      });
 
     } catch (error) {
       console.error("Error:", error);
     }
-  }, [data, connected, handleValvulaToggle]);
+  }, [mqttData, connected, handleValvulaToggle]);
 
-  // Funciones para manejar la imagen
-  const handleMouseDown = (e) => {
+  // Funciones para manejar la imagen (optimizadas con useCallback)
+  const handleMouseDown = useCallback((e) => {
     setIsDragging(true);
     setDragStart({
       x: e.clientX - imagePosition.x,
       y: e.clientY - imagePosition.y
     });
-  };
+  }, [imagePosition.x, imagePosition.y]);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (isDragging) {
       setImagePosition({
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y
       });
     }
-  };
+  }, [isDragging, dragStart.x, dragStart.y]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
   // Funciones para el highlight de válvulas
   const handleValvulaHover = useCallback((valvulaId) => {
@@ -289,6 +423,12 @@ export default function App() {
                   tipo={node.data.tipo || "entrada"}
                 />
               );
+            } else if (node.type === 'fuga') {
+              nodeContent = (
+                <NodeComponent
+                  data={node.data}
+                />
+              );
             }
 
             return (
@@ -297,7 +437,8 @@ export default function App() {
                 className="absolute z-10"
                 style={{
                   left: `${node.position.x}px`,
-                  top: `${node.position.y}px`
+                  top: `${node.position.y}px`,
+                  willChange: 'transform'
                 }}
               >
                 {nodeContent}
@@ -351,16 +492,24 @@ export default function App() {
         </Button>
       </div>
 
-      {/* Botón de simulación de fugas en la esquina inferior derecha */}
-      <div className="absolute bottom-44 right-[440px] z-20">
+      {/* Botones de simulación en la esquina inferior derecha */}
+      <div className="absolute bottom-44 right-[440px] z-20 flex flex-col gap-2">
         <button
           onClick={handleSimularFuga}
-          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${simulandoFuga
-            ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
-            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 opacity-5 ${fugaActiva
+              ? 'bg-red-300 text-white hover:bg-red-600 shadow-md'
+              : 'bg-orange-300 text-white hover:bg-orange-600 shadow-sm'
             }`}
         >
-          {simulandoFuga ? '🛑 Detener Simulación' : '⚠️ Simular Fuga'}
+          {fugaActiva ? '🛑 Detener' : '⚠️ Simular Fuga'}
+        </button>
+
+        <button
+          onClick={handleResetSimulation}
+          className="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 opacity-[2%]
+            bg-blue-500 text-white hover:bg-blue-600 shadow-sm"
+        >
+          🔄 Reset
         </button>
       </div>
 
@@ -370,6 +519,17 @@ export default function App() {
         onValvulaHover={handleValvulaHover}
         onValvulaLeave={handleValvulaLeave}
       />
+
+      {/* Overlay de fuga llamativo */}
+      <FugaOverlay
+        isVisible={showFugaOverlay}
+        onClose={handleCloseFugaOverlay}
+      />
     </div>
   );
+}
+
+// Componente principal
+export default function App() {
+  return <AppContent />;
 }

@@ -27,9 +27,9 @@ const GraficasPanel = memo(function GraficasPanel({ datosGrafico, historia, sess
             titulo={titulo}
             color={color}
             dataKey="presion"
-            unidad="kPa"
+            unidad="PSI"
             domainMin={0}
-            domainMax={90}
+            domainMax={7} // Ajustado para PSI (90 kPa ≈ 13 PSI)
             etiqueta="Presión"
           />
         ))}

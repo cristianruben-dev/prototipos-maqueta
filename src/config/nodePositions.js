@@ -5,8 +5,8 @@ export const initialNodes = [
     position: { x: 43, y: 195 },
     data: {
       label: 'Tanque Izq 1',
-      litrosKey: 'tanque_izq_1',
-      litros: 0,
+      litrosKey: 'tanque_izq1_litros',
+      litros: 1000,
       capacidad: 1000
     },
   },
@@ -28,8 +28,8 @@ export const initialNodes = [
     position: { x: 43, y: 420 },
     data: {
       label: 'Tanque Izq 2',
-      litrosKey: 'tanque_izq_2',
-      litros: 0,
+      litrosKey: 'tanque_izq2_litros',
+      litros: 1000,
       capacidad: 1000
     },
   },
@@ -116,6 +116,16 @@ export const initialNodes = [
       tipo: 'salida'
     },
   },
+  {
+    id: 'indicador-fuga',
+    type: 'fuga',
+    position: { x: 750, y: 312 },
+    data: {
+      label: 'Fuga Detectada',
+      visible: false,
+      tipo: 'indicador'
+    },
+  },
 
 
 
@@ -127,7 +137,7 @@ export const initialNodes = [
     position: { x: 1280, y: 30 },
     data: {
       label: 'Tanque Der 1',
-      litrosKey: 'tanque_der_1',
+      litrosKey: 'tanque_der1_litros',
       litros: 0,
       capacidad: 1000
     },
@@ -151,7 +161,7 @@ export const initialNodes = [
     position: { x: 1280, y: 255 },
     data: {
       label: 'Tanque Der 2',
-      litrosKey: 'tanque_der_2',
+      litrosKey: 'tanque_der2_litros',
       litros: 0,
       capacidad: 1000
     },
